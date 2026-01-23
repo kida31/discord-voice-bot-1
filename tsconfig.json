@@ -1,7 +1,5 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
     "rootDir": "./src",
     "outDir": "./dist",
 
@@ -9,16 +7,9 @@
     // See also https://aka.ms/tsconfig/module
 
     "module": "nodenext",
-    // "module": "commonjs",
-
-    "target": "esnext", // ES6
-    // "target": "es6",
+    "target": "esnext",
 
     "types": [],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
 
     // Other Outputs
     "sourceMap": true,
@@ -30,21 +21,20 @@
     "exactOptionalPropertyTypes": true,
 
     // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
 
     // Recommended Options
     "strict": true,
-    // "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
+    // "skipLibCheck": true,
 
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
