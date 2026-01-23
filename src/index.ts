@@ -1,31 +1,44 @@
-import { Client, GatewayIntentBits } from "discord.js";
-import dotenv from "dotenv";
+import { Client, Events, GatewayIntentBits } from "discord.js";
+import { commands } from "./commands";
+import { token } from "config";
 
-dotenv.config();
+function main() {
+  // Create a new client instance
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
 
-// Create a new client instance
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+  // When the client is ready, run this code (only once)
+  client.once("clientReady", () => {
+    console.log(`\nReady! Logged in as ${client.user?.tag}\n`);
+  });
 
-// When the client is ready, run this code (only once)
-client.once("ready", () => {
-  console.log(`Ready! Logged in as ${client.user?.tag}`);
-});
+  // Login to Discord with your client's token
+  client.login(token);
 
-// Login to Discord with your client's token
-client.login(process.env.DISCORD_BOT_TOKEN);
+  client.on("messageCreate", (message) => {
+    if (message.content === "!ping") {
+      message.reply("Pong!");
+    }
+  });
 
-client.on("messageCreate", (message) => {
-  if (message.content === "!ping") {
-    message.reply("Pong!");
-  }
-});
+  client.on("error", (error) => {
+    console.error("Discord client error:", error);
+  });
 
-client.on("error", (error) => {
-  console.error("Discord client error:", error);
-});
+  client.on(Events.InteractionCreate, function (itx) {
+    if (!itx.isChatInputCommand()) return;
+
+    const cmd = commands.get(itx.commandName);
+    if (!cmd) return;
+
+    console.log(itx.user.username, "triggered", cmd?.data.name);
+    cmd?.execute(itx);
+  });
+}
+
+main();
