@@ -1,6 +1,7 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { commands } from "./commands";
 import { token } from "config";
+import VoiceStateUpdateHandler from "@events/voice-state-update";
 
 function main() {
   // Create a new client instance
@@ -9,6 +10,7 @@ function main() {
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildVoiceStates,
     ],
   });
 
@@ -39,6 +41,8 @@ function main() {
     console.log(itx.user.username, "triggered", cmd?.data.name);
     cmd?.execute(itx);
   });
+
+  client.on(VoiceStateUpdateHandler.event, VoiceStateUpdateHandler.listener);
 }
 
 main();

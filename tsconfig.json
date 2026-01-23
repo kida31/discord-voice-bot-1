@@ -10,7 +10,8 @@
     "baseUrl": "./src",
     "paths": {
       "@lib/*": ["lib/*"],
-      "@commands/*": ["commands/*"]
+      "@commands/*": ["commands/*"],
+      "@events/*": ["events/*"]
     },
 
     "types": [],
