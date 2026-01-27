@@ -1,11 +1,11 @@
-import { REST, Routes } from "discord.js";
+import { Guild, REST, Routes, User } from "discord.js";
 import { commands as fullCommandData } from "./commands";
 import { clientId, devGuildId, token } from "config";
 
-const commands = fullCommandData.map((c) => c.data.toJSON());
-const rest = new REST().setToken(token);
-
 export async function deployCommands(global: boolean = false) {
+  const commands = fullCommandData.map((c) => c.data.toJSON());
+  const rest = new REST().setToken(token);
+
   try {
     console.log(
       `Started refreshing ${commands.length} application (/) commands.`,
@@ -18,7 +18,7 @@ export async function deployCommands(global: boolean = false) {
       });
 
       console.log(
-        `Successfully reloaded ${data?.length} application (/) commands globally`,
+        `Successfully reloaded ${(data as [])?.length} application (/) commands globally`,
       );
     } else {
       const data = await rest.put(
@@ -27,10 +27,26 @@ export async function deployCommands(global: boolean = false) {
       );
 
       console.log(
-        `Successfully reloaded ${data?.length} application (/) commands. In ${devGuildId}`,
+        `Successfully reloaded ${(data as [])?.length} application (/) commands. In ${devGuildId}`,
       );
     }
   } catch (error) {
     console.error(error);
   }
+}
+
+async function getUserVoiceChannel(guild: Guild, user: User) {
+  const state = await guild.voiceStates.fetch(user);
+  return state.channel;
+}
+
+export function popFirst<T>(list: T[]): [T | undefined, T[]] {
+  if (list.length == 0) {
+    return [undefined, []];
+  }
+  if (list.length == 1) {
+    return [list[0]!, []];
+  }
+  const [item, ...rest] = list;
+  return [item, rest];
 }

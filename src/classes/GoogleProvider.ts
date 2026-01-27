@@ -1,47 +1,12 @@
 // const googleTTS = require("google-tts-api");
 import type { Guild } from "discord.js";
 import googleTTS from "google-tts-api";
-
-/**
- * This class represents the data that is used to run the TTSPlayer.
- */
-class Payload {
-  constructor(
-    public resource,
-    public sentence,
-    public providerName,
-    public extras,
-  ) {
-    /**
-     * The readable stream or URL that points to a readable stream of the TTS message to be played.
-     * @type {string|ReadableStream}
-     */
-    this.resource = resource;
-
-    /**
-     * The sentence that will be played for TTS.
-     * @type {string}
-     */
-    this.sentence = sentence;
-
-    /**
-     * The name of the provider. Generally should be set to the NAME static property of any concrete provider.
-     * @type {string}
-     */
-    this.providerName = providerName;
-
-    /**
-     * Any extra information that the payload should contain.
-     * @type {object}
-     */
-    this.extras = extras;
-  }
-}
+import { Payload, type TTSService } from "./tts-stuff";
 
 /**
  * A concrete TTS provider for the Google Translate API TTS.
  */
-export class GoogleProvider {
+export class GoogleProvider implements TTSService {
   static NAME = "Google";
   static FRIENDLY_NAME = "Google Translate Provider";
 
@@ -51,7 +16,7 @@ export class GoogleProvider {
     speed: "normal",
   };
 
-  async createPayload(
+  async create(
     sentence: string,
     extras: { language: any; speed?: string },
   ): Promise<Payload[]> {

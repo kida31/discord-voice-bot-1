@@ -1,9 +1,13 @@
 import { Client, Events, GatewayIntentBits } from "discord.js";
 import { commands } from "./commands";
-import { token } from "config";
+import { devGuildId, token } from "config";
 import VoiceStateUpdateHandler from "@events/voice-state-update";
+import { subscribeToGuild } from "classes/GuildVoiceChannelAnnouncer";
 
 function main() {
+  // Module setup
+  subscribeToGuild(devGuildId);
+
   // Create a new client instance
   const client = new Client({
     intents: [
@@ -15,7 +19,12 @@ function main() {
   });
 
   // When the client is ready, run this code (only once)
-  client.once("clientReady", () => {
+  client.once("clientReady", async () => {
+    await client.user?.setUsername("K2");
+    await (await client.guilds.fetch())
+      .filter((g) => g.id == devGuildId)
+      .map((g) => g.fetch().then((g) => g.members.me?.setNickname("K2")));
+
     console.log(`\nReady! Logged in as ${client.user?.tag}\n`);
   });
 
