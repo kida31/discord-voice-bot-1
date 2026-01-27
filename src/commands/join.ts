@@ -4,6 +4,7 @@ import {
   joinVoiceChannel,
   VoiceConnectionStatus,
 } from "@discordjs/voice";
+import { createTTSPlayer } from "classes/GuildVoiceChannelAnnouncer";
 import {
   CommandInteraction,
   DiscordAPIError,
@@ -52,11 +53,9 @@ async function _joinVoiceChannel(
 
   console.log("Bot is trying to join", channel.name);
 
-  const connection = joinVoiceChannel({
-    channelId: channel.id,
-    guildId: channel.guild.id,
-    adapterCreator: channel.guild.voiceAdapterCreator,
-  });
+  const announcer = createTTSPlayer(channel.guild, channel);
+
+  const connection = announcer.connection!;
 
   connection.on(
     VoiceConnectionStatus.Disconnected,
