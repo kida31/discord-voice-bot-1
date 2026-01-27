@@ -1,12 +1,15 @@
 import {
   Collection,
   VoiceState,
+  VoiceStateManager,
   type Guild,
   type VoiceBasedChannel,
 } from "discord.js";
 import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { GoogleProvider } from "./GoogleProvider";
+import voiceStateUpdate from "@events/voice-state-update";
+import { VoiceConnectionStatus } from "@discordjs/voice";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -153,6 +156,13 @@ export function createTTSPlayer(
   player.connect({ guild, channel });
   guildAnnouncerCache.set(guild.id, player);
   console.log(`Create TTS Player in ${guild?.name}:${channel?.name}`);
+
+  player.connection?.on(VoiceConnectionStatus.Disconnected, () => {
+    console.log("Disconnected.");
+    player?.destroy();
+    guildAnnouncerCache.set(guild.id, null);
+  });
+
   return player;
 }
 
