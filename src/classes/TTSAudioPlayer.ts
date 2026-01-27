@@ -4,13 +4,21 @@ import {
   AudioResource,
   createAudioPlayer,
   createAudioResource,
+  entersState,
   getVoiceConnection,
   joinVoiceChannel,
   NoSubscriberBehavior,
   PlayerSubscription,
   VoiceConnection,
+  VoiceConnectionStatus,
+  type VoiceConnectionState,
 } from "@discordjs/voice";
-import type { Guild, VoiceBasedChannel } from "discord.js";
+import {
+  VoiceConnectionStates,
+  type Guild,
+  type VoiceBasedChannel,
+  type VoiceState,
+} from "discord.js";
 import { FIFOQueue } from "./FIFOQueue";
 import type { LanguageCode, Payload, TTSPlayer, TTSService } from "./tts-stuff";
 
@@ -46,7 +54,13 @@ export class TTSPlayerImpl implements TTSPlayer {
     this.tts = tts!;
   }
 
-  connect({ guild, channel }: { guild: Guild; channel: VoiceBasedChannel }) {
+  async connect({
+    guild,
+    channel,
+  }: {
+    guild: Guild;
+    channel: VoiceBasedChannel;
+  }) {
     this.channel = channel;
     this.guild = guild;
     this.connection = joinVoiceChannel({
@@ -54,7 +68,28 @@ export class TTSPlayerImpl implements TTSPlayer {
       guildId: guild.id,
       adapterCreator: guild.voiceAdapterCreator,
     });
+
+    const logConnectionAttempt = (
+      oldState: VoiceConnectionState,
+      newState: VoiceConnectionState,
+    ) => {
+      if (newState.status == VoiceConnectionStatus.Ready) {
+        this.connection?.removeListener("stateChange", logConnectionAttempt);
+      }
+      if (oldState.status == newState.status) {
+        console.log(`${oldState.status}...`);
+      } else {
+        console.log(
+          `Voice state changed: ${oldState.status} -> ${newState.status}`,
+        );
+      }
+    };
+
+    this.connection.on("stateChange", logConnectionAttempt);
+
+    await entersState(this.connection, VoiceConnectionStatus.Ready, 5_000);
     this.subscription = this.connection.subscribe(this.player);
+
     return this.connection;
   }
 

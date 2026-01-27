@@ -21,7 +21,7 @@ export interface TTSPlayer {
 
   languageCode: LanguageCode;
 
-  connect(options: { guild: Guild; channel: VoiceBasedChannel }): any;
+  connect(options: { guild: Guild; channel: VoiceBasedChannel }): Promise<any>;
   play(text: string): Promise<void>;
   destroy(): void;
 }

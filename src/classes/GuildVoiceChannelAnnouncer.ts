@@ -9,7 +9,7 @@ import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { GoogleProvider } from "./GoogleProvider";
 import voiceStateUpdate from "@events/voice-state-update";
-import { VoiceConnectionStatus } from "@discordjs/voice";
+import { entersState, VoiceConnectionStatus } from "@discordjs/voice";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -114,7 +114,7 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
   // Connection Handling
   if (!announcer) {
     if (!newState.member?.user.bot) {
-      announcer = createTTSPlayer(newState.guild, newState.channel);
+      announcer = await createTTSPlayer(newState.guild, newState.channel);
     }
     // Ignore bots
   } else {
@@ -146,14 +146,16 @@ async function onMemberChangedChannel(
   await onMemberConnect(newState);
 }
 
-export function createTTSPlayer(
+export async function createTTSPlayer(
   guild: Guild,
   channel: VoiceBasedChannel,
-): TTSPlayer {
+): Promise<TTSPlayer> {
   const player = new TTSPlayerImpl({
     tts: new GoogleProvider(),
   });
-  player.connect({ guild, channel });
+
+  console.log("Connecting...");
+  await player.connect({ guild, channel });
   guildAnnouncerCache.set(guild.id, player);
   console.log(`Create TTS Player in ${guild?.name}:${channel?.name}`);
 
@@ -162,7 +164,7 @@ export function createTTSPlayer(
     player?.destroy();
     guildAnnouncerCache.set(guild.id, null);
   });
-
+  console.log("...Connected");
   return player;
 }
 
