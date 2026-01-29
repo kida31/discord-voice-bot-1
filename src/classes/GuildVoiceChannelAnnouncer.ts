@@ -191,12 +191,12 @@ function makeUserLeftMessage(
   vs: VoiceStateWithChannel,
   language: LanguageCode = "en",
 ) {
-  const displayName = vs.member?.user.displayName;
+  const name = vs.member?.nickname ?? vs.member?.user.displayName ?? "User";
   switch (language) {
     case "en":
-      return `${displayName} left your channel.`;
+      return `${name} left your channel.`;
     case "vi-VN":
-      return `${displayName} đã rời khỏi Channel của bạn.`;
+      return `${name} đã rời khỏi Channel của bạn.`;
     default:
       throw new Error("Invalid language code");
   }
@@ -206,12 +206,12 @@ function makeUserJoinedMessage(
   vs: VoiceStateWithChannel,
   language: LanguageCode = "en",
 ) {
-  const displayName = vs.member?.user.displayName;
+  const name = vs.member?.nickname ?? vs.member?.user.displayName ?? "User";
   switch (language) {
     case "en":
-      return `${displayName} joined your channel.`;
+      return `${name} joined your channel.`;
     case "vi-VN":
-      return `${displayName} đã tham gia channel của bạn.`;
+      return `${name} đã tham gia channel của bạn.`;
     default:
       throw new Error("Invalid language code");
   }
