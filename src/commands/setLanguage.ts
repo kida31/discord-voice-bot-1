@@ -1,6 +1,6 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
 import type { ChatCommand } from "./type";
-import { setLang } from "classes/GuildVoiceChannelAnnouncer";
+import { setGuildDefaultLang } from "classes/GuildVoiceChannelAnnouncer";
 import { getNickname, type LanguageCode } from "classes/tts-stuff";
 
 const languageOptions: { name: string; value: LanguageCode }[] = [
@@ -27,7 +27,7 @@ async function execute(interaction: CommandInteraction): Promise<void> {
 
   if (!interaction.guildId) return;
 
-  setLang(interaction.guildId, langCode);
+  setGuildDefaultLang(interaction.guildId, langCode);
 
   const name = getNickname(langCode);
   console.log("Trying to set nickname to...", name);

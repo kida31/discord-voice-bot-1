@@ -1,11 +1,20 @@
-import type { Events } from "discord.js";
+import type {
+  OmitPartialGroupDMChannel,
+  Message,
+  CacheType,
+  Interaction,
+  VoiceState,
+} from "discord.js";
 
-export type AnyAsyncVoid = (...any: any[]) => Promise<void>;
+export type MessageCreateHandler = (
+  message: OmitPartialGroupDMChannel<Message<boolean>>,
+) => void;
 
-export type EventHandlerConfig<
-  T,
-  F extends (...any: any[]) => Promise<void>,
-> = {
-  event: Events;
-  listener: F;
-};
+export type InteractionCreateHandler = (
+  interaction: Interaction<CacheType>,
+) => void;
+
+export type VoiceStateUpdateHandler = (
+  oldState: VoiceState,
+  newState: VoiceState,
+) => void;

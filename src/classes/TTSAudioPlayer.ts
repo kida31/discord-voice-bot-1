@@ -13,12 +13,7 @@ import {
   VoiceConnectionStatus,
   type VoiceConnectionState,
 } from "@discordjs/voice";
-import {
-  VoiceConnectionStates,
-  type Guild,
-  type VoiceBasedChannel,
-  type VoiceState,
-} from "discord.js";
+import { type Guild, type VoiceBasedChannel } from "discord.js";
 import { FIFOQueue } from "./FIFOQueue";
 import type { LanguageCode, Payload, TTSPlayer, TTSService } from "./tts-stuff";
 

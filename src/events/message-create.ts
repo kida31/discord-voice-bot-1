@@ -1,14 +1,8 @@
-import { Events, type OmitPartialGroupDMChannel, Message } from "discord.js";
-import type { EventHandlerConfig } from "./type";
-import { handleTextInputInChannel } from "classes/tts/SpokenChannel";
+import { type OmitPartialGroupDMChannel, Message } from "discord.js";
+import { handleTextInputInChannel } from "classes/tts/tts-channel";
 
-export type MessageCreateHandler = (
+export default async function messageCreateListener(
   message: OmitPartialGroupDMChannel<Message<boolean>>,
-) => Promise<void>;
-
-export default {
-  event: Events.MessageCreate,
-  async listener(message) {
-    handleTextInputInChannel(message);
-  },
-} satisfies EventHandlerConfig<Events.MessageCreate, MessageCreateHandler>;
+) {
+  handleTextInputInChannel(message);
+}

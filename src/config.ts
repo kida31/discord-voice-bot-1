@@ -1,3 +1,4 @@
+import { GatewayIntentBits } from "discord.js";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -10,6 +11,16 @@ function assertIsString(maybeString: any): string | never {
   throw new Error("Expected string, got something else");
 }
 
-export const token = assertIsString(process.env.DISCORD_BOT_TOKEN);
-export const clientId = assertIsString(process.env.CLIENT_ID);
-export const devGuildId = assertIsString(process.env.DEV_GUILD_ID);
+export const token = assertIsString(process.env["DISCORD_BOT_TOKEN"]);
+export const clientId = assertIsString(process.env["CLIENT_ID"]);
+export const devGuildId = assertIsString(process.env["DEV_GUILD_ID"]);
+
+export const clientOptions = {
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+};

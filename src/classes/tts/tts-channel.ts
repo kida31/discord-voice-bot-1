@@ -1,4 +1,4 @@
-import type { MessageCreateHandler } from "@events/message-create";
+import type { MessageCreateHandler } from "@events/type";
 import { getAnnouncer } from "classes/GuildVoiceChannelAnnouncer";
 import {
   Collection,
@@ -14,8 +14,10 @@ export const handleTextInputInChannel: MessageCreateHandler = async function (
   msg,
 ) {
   if (!msg.inGuild()) {
+    console.log("Not a guild message");
     return;
   }
+
   const { content, channelId } = msg;
   if (trackedChannels.get(msg.guildId) != channelId) return;
 

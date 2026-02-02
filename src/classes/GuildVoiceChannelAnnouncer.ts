@@ -154,7 +154,11 @@ export async function createTTSPlayer(
     tts: new GoogleProvider(),
   });
 
-  console.log("Connecting...");
+  if (getGuildDefaultLang(guild.id)) {
+    player.languageCode = getGuildDefaultLang(guild.id)!;
+  }
+
+  console.log(`Connecting... (${guild.name}, ${channel.name})`);
   await player.connect({ guild, channel });
   guildAnnouncerCache.set(guild.id, player);
   console.log(`Create TTS Player in ${guild?.name}:${channel?.name}`);
@@ -219,10 +223,13 @@ function makeUserJoinedMessage(
   }
 }
 
-export function setLang(guildId: Guild["id"], l: LanguageCode): void {
+export function setGuildDefaultLang(
+  guildId: Guild["id"],
+  l: LanguageCode,
+): void {
   guildPreferredLanguages.set(guildId, l);
 }
 
-export function getLang(guildId: Guild["id"]) {
+export function getGuildDefaultLang(guildId: Guild["id"]) {
   return guildPreferredLanguages.get(guildId);
 }

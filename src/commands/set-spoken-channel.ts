@@ -1,4 +1,4 @@
-import { setReadChannel } from "classes/tts/SpokenChannel";
+import { setReadChannel } from "classes/tts/tts-channel";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { channel } from "node:diagnostics_channel";
 
