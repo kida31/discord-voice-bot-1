@@ -198,7 +198,8 @@ function makeUserLeftMessage(
     case "vi-VN":
       return `${name} đã rời khỏi Channel của bạn.`;
     default:
-      throw new Error("Invalid language code");
+      console.warn("Language code not implemented:", language);
+      return makeUserLeftMessage(vs, "en");
   }
 }
 
@@ -213,7 +214,8 @@ function makeUserJoinedMessage(
     case "vi-VN":
       return `${name} đã tham gia channel của bạn.`;
     default:
-      throw new Error("Invalid language code");
+      console.warn("Language code not implemented:", language);
+      return makeUserJoinedMessage(vs, "en");
   }
 }
 

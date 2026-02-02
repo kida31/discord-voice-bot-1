@@ -3,6 +3,12 @@ import type { ChatCommand } from "./type";
 import { setLang } from "classes/GuildVoiceChannelAnnouncer";
 import { getNickname, type LanguageCode } from "classes/tts-stuff";
 
+const languageOptions: { name: string; value: LanguageCode }[] = [
+  { name: "Vietnamese", value: "vi-VN" },
+  { name: "English", value: "en" },
+  { name: "Deutsch (German)", value: "de-DE" },
+];
+
 const data = new SlashCommandBuilder()
   .setName("language")
   .setDescription("Set language for TTS player")
@@ -11,10 +17,7 @@ const data = new SlashCommandBuilder()
       .setName("lang")
       .setDescription("Say something")
       .setRequired(true)
-      .addChoices(
-        { name: "Vietnamese :flag_vn:", value: "vi-VN" satisfies LanguageCode },
-        { name: "English :flag_us:", value: "en" satisfies LanguageCode },
-      ),
+      .addChoices(...languageOptions),
   );
 
 async function execute(interaction: CommandInteraction): Promise<void> {

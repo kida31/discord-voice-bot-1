@@ -1,14 +1,16 @@
 import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
 
-export type LanguageCode = "en" | "vi-VN";
+// https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
+export type LanguageCode = "en" | "vi-VN" | "de-DE";
 
-const icons: Collection<LanguageCode, string> = new Collection();
-icons.set("en", "Announcer");
-icons.set("vi-VN", "VTV4 Announcer");
+const botNickname: Collection<LanguageCode, string> = new Collection();
+botNickname.set("en", "Announcer");
+botNickname.set("vi-VN", "VTV4 Announcer");
+botNickname.set("de-DE", "BRD Sprecher");
 
 export function getNickname(l: LanguageCode): string {
-  return icons.get(l)!;
+  return botNickname.get(l) ?? botNickname.get("en")!;
 }
 
 export interface TTSPlayer {
