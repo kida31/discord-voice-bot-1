@@ -3,6 +3,7 @@ import { commands } from "./commands";
 import { devGuildId, token } from "config";
 import VoiceStateUpdateHandler from "@events/voice-state-update";
 import { subscribeToGuild } from "classes/GuildVoiceChannelAnnouncer";
+import messageCreate from "@events/message-create";
 
 function main() {
   // Module setup
@@ -15,6 +16,7 @@ function main() {
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildMessageReactions,
     ],
   });
 
@@ -52,6 +54,8 @@ function main() {
   });
 
   client.on(VoiceStateUpdateHandler.event, VoiceStateUpdateHandler.listener);
+
+  client.on(messageCreate.event, messageCreate.listener);
 }
 
 main();
