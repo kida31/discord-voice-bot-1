@@ -25,6 +25,7 @@ async function execute(interaction: CommandInteraction): Promise<void> {
   }
 
   await announcer.play(text);
+  await interaction.deferReply();
   await interaction.deleteReply();
 }
 
