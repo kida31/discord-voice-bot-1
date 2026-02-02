@@ -10,9 +10,7 @@ import {
 const trackedChannels: Collection<Guild["id"], TextBasedChannel["id"]> =
   new Collection();
 
-export const handleTextInputInChannel: MessageCreateHandler = async function (
-  msg,
-) {
+export const handleAutoTtsChannel: MessageCreateHandler = async function (msg) {
   if (!msg.inGuild()) {
     console.log("Not a guild message");
     return;
@@ -31,7 +29,7 @@ export const handleTextInputInChannel: MessageCreateHandler = async function (
     console.log("No announcer active");
     return;
   }
-  announcer.play(`${msg.member?.nickname ?? "User"}: ${content}`);
+  announcer.play(content);
 };
 
 export function setReadChannel(channel: GuildTextBasedChannel) {

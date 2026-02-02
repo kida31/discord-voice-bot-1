@@ -45,9 +45,9 @@ async function _joinVoiceChannel(channel: VoiceBasedChannel): Promise<void> {
   console.log("Bot is trying to join", channel.name);
 
   const announcer = await createTTSPlayer(channel.guild, channel);
-  const connection = announcer.connection!;
+  const connection = announcer.connection;
 
-  connection.on(
+  connection?.on(
     VoiceConnectionStatus.Disconnected,
     async (_oldState, _newState) => {
       try {

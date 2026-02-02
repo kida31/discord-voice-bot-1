@@ -1,9 +1,6 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
 import { getAnnouncer } from "@lib/tts/GuildVoiceChannelAnnouncer";
 import type { ChatInputCommand } from "./type";
-
-// import ffmpeg from "ffmpeg-static";
-// console.log("Using FFmpeg at:", ffmpeg);
 const data = new SlashCommandBuilder()
   .setName("say")
   .setDescription("Say something with tts")
@@ -26,7 +23,7 @@ async function execute(interaction: CommandInteraction): Promise<void> {
 
   await announcer.play(text);
   const res = await interaction.reply("...playing");
-  // await res.delete();
+  await res.delete();
 }
 
 export default {
