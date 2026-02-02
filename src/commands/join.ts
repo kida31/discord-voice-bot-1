@@ -1,16 +1,12 @@
-import type { ChatCommand } from "@commands/type";
-import {
-  entersState,
-  joinVoiceChannel,
-  VoiceConnectionStatus,
-} from "@discordjs/voice";
-import { createTTSPlayer } from "classes/GuildVoiceChannelAnnouncer";
+import { entersState, VoiceConnectionStatus } from "@discordjs/voice";
+import { createTTSPlayer } from "@lib/tts/GuildVoiceChannelAnnouncer";
 import {
   CommandInteraction,
   DiscordAPIError,
   SlashCommandBuilder,
   type VoiceBasedChannel,
 } from "discord.js";
+import type { ChatInputCommand } from "./type";
 
 export default {
   data: new SlashCommandBuilder()
@@ -23,7 +19,7 @@ export default {
 
     const itxChannel = interaction.channel;
     if (itxChannel?.isVoiceBased()) {
-      return _joinVoiceChannel(interaction, itxChannel);
+      return _joinVoiceChannel(itxChannel);
     }
 
     const guild = interaction.guild;
@@ -32,7 +28,7 @@ export default {
       const userVoiceState = await vm?.fetch(interaction.user);
       const userVoiceChannel = userVoiceState?.channel;
       if (userVoiceChannel) {
-        return _joinVoiceChannel(interaction, userVoiceChannel);
+        return _joinVoiceChannel(userVoiceChannel);
       }
     } catch (e) {
       console.warn("Something went wrong");
@@ -43,18 +39,12 @@ export default {
       }
     }
   },
-} satisfies ChatCommand;
+} satisfies ChatInputCommand;
 
-async function _joinVoiceChannel(
-  itx: CommandInteraction,
-  channel: VoiceBasedChannel,
-): Promise<void> {
-  // TODO
-
+async function _joinVoiceChannel(channel: VoiceBasedChannel): Promise<void> {
   console.log("Bot is trying to join", channel.name);
 
-  const announcer = createTTSPlayer(channel.guild, channel);
-
+  const announcer = await createTTSPlayer(channel.guild, channel);
   const connection = announcer.connection!;
 
   connection.on(

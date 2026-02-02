@@ -1,7 +1,7 @@
 // const googleTTS = require("google-tts-api");
 import type { Guild } from "discord.js";
 import googleTTS from "google-tts-api";
-import { Payload, type TTSService } from "./tts-stuff";
+import { type TTSService, Payload } from "../tts-stuff";
 
 /**
  * A concrete TTS provider for the Google Translate API TTS.

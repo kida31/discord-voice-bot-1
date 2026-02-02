@@ -2,17 +2,14 @@ import { Collection } from "discord.js";
 
 import join from "./join";
 import ping from "./ping";
-import setLogChannel from "./set-log-channel";
-import sayTTS from "./say-tts";
-import setLang from "./setLanguage";
-import setSpokenChannel from "./set-spoken-channel";
+import say from "./say";
+import setLanguage from "./set-language";
+import setChannel from "./set-tts-channel";
+import type { BaseCommand } from "./type";
 
-import type { ChatCommand } from "./type";
+export const commands = new Collection<string, BaseCommand<any>>();
 
-export const commands = new Collection<string, ChatCommand>();
-
-[join, ping, setLogChannel, sayTTS, setLang, setSpokenChannel].forEach(
-  (cmd: ChatCommand) => {
-    commands.set(cmd.data.name, cmd);
-  },
-);
+// TODO pick from directory
+[join, ping, say, setLanguage, setChannel].forEach((cmd: BaseCommand<any>) => {
+  commands.set(cmd.data.name, cmd);
+});

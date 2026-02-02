@@ -1,5 +1,5 @@
-import type { ChatCommand } from "@commands/type";
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
+import type { ChatInputCommand } from "./type";
 
 export default {
   data: new SlashCommandBuilder()
@@ -8,4 +8,4 @@ export default {
   async execute(interaction: CommandInteraction) {
     await interaction.reply("Pong!");
   },
-} satisfies ChatCommand;
+} satisfies ChatInputCommand;

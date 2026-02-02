@@ -14,7 +14,7 @@ import {
   type VoiceConnectionState,
 } from "@discordjs/voice";
 import { type Guild, type VoiceBasedChannel } from "discord.js";
-import { FIFOQueue } from "./FIFOQueue";
+import { FIFOQueue } from "../common/FIFOQueue";
 import type { LanguageCode, Payload, TTSPlayer, TTSService } from "./tts-stuff";
 
 type PayloadWithResource = {

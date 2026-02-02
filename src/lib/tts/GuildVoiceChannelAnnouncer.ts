@@ -1,15 +1,13 @@
 import {
   Collection,
   VoiceState,
-  VoiceStateManager,
   type Guild,
   type VoiceBasedChannel,
 } from "discord.js";
 import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
-import { GoogleProvider } from "./GoogleProvider";
-import voiceStateUpdate from "@events/voice-state-update";
-import { entersState, VoiceConnectionStatus } from "@discordjs/voice";
+import { VoiceConnectionStatus } from "@discordjs/voice";
+import { GoogleProvider } from "./audio-provider/GoogleProvider";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -228,6 +226,10 @@ export function setGuildDefaultLang(
   l: LanguageCode,
 ): void {
   guildPreferredLanguages.set(guildId, l);
+  const announcer = getAnnouncer(guildId);
+  if (announcer) {
+    announcer.languageCode = l;
+  }
 }
 
 export function getGuildDefaultLang(guildId: Guild["id"]) {

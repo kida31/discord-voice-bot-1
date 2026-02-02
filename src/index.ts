@@ -1,7 +1,7 @@
 import { Client, Events } from "discord.js";
 
 import { clientOptions, devGuildId, token } from "config";
-import { subscribeToGuild } from "classes/GuildVoiceChannelAnnouncer";
+import { subscribeToGuild } from "@lib/tts/GuildVoiceChannelAnnouncer";
 import messageCreateListener from "@events/message-create";
 import voiceStateUpdateListener from "@events/voice-state-update";
 import interactionCreateListener from "@events/interaction-create";

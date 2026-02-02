@@ -1,6 +1,6 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
-import type { ChatCommand } from "./type";
-import { getAnnouncer } from "classes/GuildVoiceChannelAnnouncer";
+import { getAnnouncer } from "@lib/tts/GuildVoiceChannelAnnouncer";
+import type { ChatInputCommand } from "./type";
 
 // import ffmpeg from "ffmpeg-static";
 // console.log("Using FFmpeg at:", ffmpeg);
@@ -24,11 +24,11 @@ async function execute(interaction: CommandInteraction): Promise<void> {
     return;
   }
 
-  announcer.play(text);
+  await announcer.play(text);
+  await interaction.deleteReply();
 }
 
 export default {
   data,
   execute,
-  run: execute,
-} satisfies ChatCommand;
+} satisfies ChatInputCommand;

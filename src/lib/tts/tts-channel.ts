@@ -1,5 +1,5 @@
 import type { MessageCreateHandler } from "@events/type";
-import { getAnnouncer } from "classes/GuildVoiceChannelAnnouncer";
+import { getAnnouncer } from "@lib/tts/GuildVoiceChannelAnnouncer";
 import {
   Collection,
   Guild,
@@ -18,6 +18,10 @@ export const handleTextInputInChannel: MessageCreateHandler = async function (
     return;
   }
 
+  if (msg.member?.user.id == msg.guild.members.me!.id) {
+    return; // ignore own messages
+  }
+
   const { content, channelId } = msg;
   if (trackedChannels.get(msg.guildId) != channelId) return;
 
@@ -27,7 +31,7 @@ export const handleTextInputInChannel: MessageCreateHandler = async function (
     console.log("No announcer active");
     return;
   }
-  announcer.play(content);
+  announcer.play(`${msg.member?.nickname ?? "User"}: ${content}`);
 };
 
 export function setReadChannel(channel: GuildTextBasedChannel) {

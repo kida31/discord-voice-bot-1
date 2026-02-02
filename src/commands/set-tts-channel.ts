@@ -1,4 +1,4 @@
-import { setReadChannel } from "classes/tts/tts-channel";
+import { setReadChannel } from "@lib/tts/tts-channel";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 import { channel } from "node:diagnostics_channel";
 
@@ -20,6 +20,9 @@ export default {
     if (targetChannel?.isTextBased()) {
       setReadChannel(targetChannel);
       console.log(`Set ${guild.name}:${targetChannel.name} as TTS channel`);
+      await interaction.reply({
+        content: `${targetChannel} has been set as TTS channel. Send messages here for me to read out.`,
+      });
     } else {
       console.warn("Unexpected channel: ", interaction.channel);
     }
