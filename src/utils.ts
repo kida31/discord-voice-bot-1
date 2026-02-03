@@ -3,27 +3,30 @@ import { commands as fullCommandData } from "./commands";
 import { clientId, devGuildId, token } from "config";
 
 export async function deployCommands(global: boolean = false) {
-  const commands = fullCommandData.map((c) => c.data.toJSON());
+  const globalCommands = fullCommandData.map((c) => c.data.toJSON());
+  const guildCommands = global ? [] : globalCommands;
   const rest = new REST().setToken(token);
 
   try {
     console.log(
-      `Started refreshing ${commands.length} application (/) commands.`,
+      `Started refreshing ${globalCommands.length} application (/) commands.`,
     );
 
     // The put method is used to fully refresh all commands in the guild with the current set
     if (global) {
       const data = await rest.put(Routes.applicationCommands(clientId), {
-        body: commands,
+        body: globalCommands,
       });
 
       console.log(
         `Successfully reloaded ${(data as [])?.length} application (/) commands globally`,
       );
-    } else {
+    }
+
+    {
       const data = await rest.put(
         Routes.applicationGuildCommands(clientId, devGuildId),
-        { body: commands },
+        { body: guildCommands },
       );
 
       console.log(

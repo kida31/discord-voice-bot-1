@@ -1,25 +1,44 @@
 import { Client, Events } from "discord.js";
 
 import { clientOptions, devGuildId, token } from "config";
-import { subscribeToGuild } from "@lib/tts/GuildVoiceChannelAnnouncer";
+import {
+  configureGVCAnnouncer,
+  subscribeToGuild,
+} from "@lib/tts/GuildVoiceChannelAnnouncer";
 import messageCreateListener from "@events/message-create";
 import voiceStateUpdateListener from "@events/voice-state-update";
 import interactionCreateListener from "@events/interaction-create";
 import errorListener from "@events/error";
+import {
+  deleteValue,
+  getValue,
+  storeValue,
+} from "@lib/persist/key-value-store";
 
 function main() {
+  // Initialize TTS announcer
   subscribeToGuild(devGuildId);
+  // Connect with database
+  configureGVCAnnouncer({
+    persist: {
+      text: {
+        get: (subkey) => getValue(`tts/${subkey}`),
+        set: (subkey, value) => storeValue(`tts/${subkey}`, value),
+        delete: (subkey) => deleteValue(`tts/${subkey}`),
+      },
+      voice: {
+        get: (subkey) => getValue(`tts/${subkey}`),
+        set: (subkey, value) => storeValue(`tts/${subkey}`, value),
+        delete: (subkey) => deleteValue(`tts/${subkey}`),
+      },
+    },
+  });
 
   // Create a new client instance
   const client = new Client(clientOptions);
 
   // When the client is ready, run this code (only once)
   client.once("clientReady", async () => {
-    await client.user?.setUsername("K2");
-    (await client.guilds.fetch())
-      .filter((g) => g.id == devGuildId)
-      .map((g) => g.fetch().then((g) => g.members.me?.setNickname("K2")));
-
     console.log(`\nReady! Logged in as ${client.user?.tag}\n`);
   });
 
