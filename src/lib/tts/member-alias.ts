@@ -1,5 +1,11 @@
 import type { KeyValueOperations } from "@lib/common/util-types";
-import { Collection, type GuildMember } from "discord.js";
+import {
+  Collection,
+  Guild,
+  User,
+  type APIInteractionGuildMember,
+  type GuildMember,
+} from "discord.js";
 
 interface ConfigOptions {
   persist?: Partial<KeyValueOperations<string, string>>;
@@ -8,30 +14,37 @@ interface ConfigOptions {
 let _db: Partial<KeyValueOperations<string, string>> = {};
 let cache: Collection<string, string> = new Collection();
 
-function memberAsKey(member: GuildMember): string {
-  return `${member.guild.id}/${member.id}`;
+function memberAsKey(guildId: Guild["id"], userId: User["id"]): string {
+  return `${guildId}/${userId}`;
 }
 
 export function configureAlias(options: ConfigOptions) {
   _db = options.persist ?? {};
 }
 
-export function setAlias(member: GuildMember, alias: string): void {
-  const key = memberAsKey(member);
+export function setAlias(
+  guildId: Guild["id"],
+  userId: User["id"],
+  alias: string,
+): void {
+  const key = memberAsKey(guildId, userId);
 
   cache.set(key, alias);
   _db.set?.(key, alias);
 }
 
-export function deleteAlias(member: GuildMember): void {
-  const key = memberAsKey(member);
+export function deleteAlias(guildId: Guild["id"], userId: User["id"]): void {
+  const key = memberAsKey(guildId, userId);
 
   cache.delete(key);
   _db.delete?.(key);
 }
 
-export function getAlias(member: GuildMember): string | undefined {
-  const key = memberAsKey(member);
+export function getAlias(
+  guildId: Guild["id"],
+  userId: User["id"],
+): string | undefined {
+  const key = memberAsKey(guildId, userId);
 
   const value = _db.get?.(key) ?? cache.get(key);
 
