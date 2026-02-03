@@ -1,11 +1,5 @@
 import type { KeyValueOperations } from "@lib/common/util-types";
-import {
-  Collection,
-  Guild,
-  User,
-  type APIInteractionGuildMember,
-  type GuildMember,
-} from "discord.js";
+import { Collection, Guild, User } from "discord.js";
 
 interface ConfigOptions {
   persist?: Partial<KeyValueOperations<string, string>>;

@@ -255,6 +255,9 @@ export function getGuildTextLanguage(guildId: Guild["id"]): LanguageCode {
 
 function memberName(member: GuildMember): string {
   return (
-    getAlias(member) ?? member.nickname ?? member.user.displayName ?? "User"
+    getAlias(member.guild.id, member.user.id) ??
+    member.nickname ??
+    member.user.displayName ??
+    "User"
   );
 }
