@@ -14,6 +14,7 @@ import {
   getValue,
   storeValue,
 } from "@lib/persist/key-value-store";
+import { configureAlias } from "@lib/tts/member-alias";
 
 function main() {
   // Initialize TTS announcer
@@ -31,6 +32,14 @@ function main() {
         set: (subkey, value) => storeValue(`tts/${subkey}`, value),
         delete: (subkey) => deleteValue(`tts/${subkey}`),
       },
+    },
+  });
+
+  configureAlias({
+    persist: {
+      get: (subkey) => getValue(`alias/${subkey}`),
+      set: (subkey, value) => storeValue(`alias/${subkey}`, value),
+      delete: (subkey) => deleteValue(`alias/${subkey}`),
     },
   });
 
