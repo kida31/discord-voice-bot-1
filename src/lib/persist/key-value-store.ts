@@ -3,6 +3,7 @@ import Database from "better-sqlite3";
 const DB_FILE_NAME = process.env["SQLITE_FILE"];
 const TABLE_NAME = "stringkeyvalue" as const;
 const options: Database.Options = { verbose: console.log } as const;
+type TableData = { key: string; value: string };
 
 let cachedDatabase: Database.Database | null = null;
 
@@ -38,9 +39,10 @@ export function storeValue(key: string, value: string | null): void {
 
 export function getValue(key: string): string | undefined {
   const db = getDb();
-  return db
+  const res = db
     .prepare(`SELECT * FROM ${TABLE_NAME} WHERE key=?;`)
-    .get(key) as string;
+    .get(key) as TableData | undefined;
+  return res?.value;
 }
 
 export function deleteValue(key: string): void {

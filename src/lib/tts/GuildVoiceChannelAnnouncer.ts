@@ -16,11 +16,20 @@ const guildAnnouncerCache = new Collection<
   GuildVoiceChannelAnnouncer | null | undefined
 >();
 
-const guildPreferredLanguages = new Collection<Guild["id"], LanguageCode>();
-
 type VoiceStateWithChannel = VoiceState & {
   channel: Exclude<VoiceState["channel"], null>;
 };
+
+interface LanguagePersistanceOperations {
+  set?(key: string, value: LanguageCode): void;
+  get?(key: string): LanguageCode | null | undefined;
+  delete?(key: string): void;
+}
+
+let languagePreferencePersistor:
+  | LanguagePersistanceOperations
+  | undefined
+  | null = null;
 
 /** Tracks guild. Will automatically spawn and despawn announcer when someone joins a channel */
 export function subscribeToGuild(guildId: Guild["id"]) {
@@ -94,8 +103,7 @@ async function onMemberDisconnect(oldState: VoiceStateWithChannel) {
   // Announcement Handling
   if (announcer) {
     // Announcement Handling
-    announcer.languageCode =
-      guildPreferredLanguages.get(announcer.guild!.id!) || "en";
+    announcer.languageCode = getGuildDefaultLang(announcer.guild!.id!);
     await announcer?.play(
       makeUserLeftMessage(oldState, announcer.languageCode),
     );
@@ -121,8 +129,7 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
 
   if (announcer && announcerIsOnChannel(newState.channel)) {
     // Announcement Handling
-    announcer.languageCode =
-      guildPreferredLanguages.get(announcer.guild!.id!) || "en";
+    announcer.languageCode = getGuildDefaultLang(announcer.guild!.id!);
     await announcer?.play(
       makeUserJoinedMessage(newState, announcer.languageCode),
     );
@@ -221,17 +228,29 @@ function makeUserJoinedMessage(
   }
 }
 
+const _guildPreferredLanguages = new Collection<Guild["id"], LanguageCode>();
+
 export function setGuildDefaultLang(
   guildId: Guild["id"],
   l: LanguageCode,
 ): void {
-  guildPreferredLanguages.set(guildId, l);
+  _guildPreferredLanguages.set(guildId, l);
+  languagePreferencePersistor?.set?.(guildId, l);
+
   const announcer = getAnnouncer(guildId);
   if (announcer) {
     announcer.languageCode = l;
   }
 }
 
-export function getGuildDefaultLang(guildId: Guild["id"]) {
-  return guildPreferredLanguages.get(guildId);
+export function getGuildDefaultLang(guildId: Guild["id"]): LanguageCode {
+  return (
+    languagePreferencePersistor?.get?.(guildId) ??
+    _guildPreferredLanguages.get(guildId) ??
+    "en"
+  );
+}
+
+export function setPersistance(actions: LanguagePersistanceOperations) {
+  languagePreferencePersistor = actions;
 }
