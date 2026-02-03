@@ -1,4 +1,4 @@
-import * as GuildVCAnnouncer from "@lib/tts/GuildVoiceChannelAnnouncer";
+/* import * as GuildVCAnnouncer from "@lib/tts/GuildVoiceChannelAnnouncer";
 import {
   memberSelfMuted,
   memberSelfUnmuted,
@@ -17,11 +17,11 @@ export default async function voiceStateUpdateListener(
     if (newState.selfMute) {
       // User hat sich gemutet
       console.log(`${newState.member?.displayName} hat sich gemutet.`);
-      // await announceSelfMuteChange(newState, true);
+      await announceSelfMuteChange(newState, true);
     } else {
       // User hat sich entmutet
       console.log(`${newState.member?.displayName} hat sich entmutet.`);
-      // await announceSelfMuteChange(newState, false);
+      await announceSelfMuteChange(newState, false);
     }
   }
 
@@ -48,4 +48,4 @@ async function announceSelfMuteChange(
   announcer.languageCode =
     GuildVCAnnouncer.getGuildVoiceLanguage(state.guild.id);
   await announcer.play(message);
-}
+} */

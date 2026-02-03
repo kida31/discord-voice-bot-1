@@ -1,7 +1,7 @@
 import type {
   ChatInputCommandInteraction,
   CacheType,
-  SlashCommandOptionsOnlyBuilder,
+  // SlashCommandOptionsOnlyBuilder,
   SlashCommandBuilder,
   Interaction,
 } from "discord.js";
