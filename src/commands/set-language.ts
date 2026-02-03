@@ -1,5 +1,5 @@
 import { CommandInteraction, SlashCommandBuilder } from "discord.js";
-import { setGuildDefaultLang } from "@lib/tts/GuildVoiceChannelAnnouncer";
+import { setGuildVoiceLanguage } from "@lib/tts/GuildVoiceChannelAnnouncer";
 import { getNickname, type LanguageCode } from "@lib/tts/tts-stuff";
 import type { ChatInputCommand } from "./type";
 
@@ -10,8 +10,8 @@ const languageOptions: { name: string; value: LanguageCode }[] = [
 ] as const;
 
 const data = new SlashCommandBuilder()
-  .setName("language")
-  .setDescription("Set language for TTS player")
+  .setName("voice")
+  .setDescription("Set voice language for TTS player")
   .addStringOption((option) =>
     option
       .setName("lang")
@@ -22,12 +22,13 @@ const data = new SlashCommandBuilder()
 
 async function execute(interaction: CommandInteraction): Promise<void> {
   if (!interaction.isChatInputCommand()) return;
+  interaction.command;
 
   const langCode = interaction.options.getString("lang", true) as LanguageCode;
 
   if (!interaction.guildId) return;
 
-  setGuildDefaultLang(interaction.guildId, langCode);
+  setGuildVoiceLanguage(interaction.guildId, langCode);
 
   {
     const name = getNickname(langCode);
@@ -35,7 +36,9 @@ async function execute(interaction: CommandInteraction): Promise<void> {
     await interaction.guild?.members.me?.setNickname(name);
   }
 
-  await interaction.reply({ content: "Language set to: `" + langCode + "`" });
+  await interaction.reply({
+    content: "Voice language set to: `" + langCode + "`",
+  });
 }
 
 export default {

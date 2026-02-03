@@ -45,7 +45,17 @@ export function getValue(key: string): string | undefined {
   return res?.value;
 }
 
-export function deleteValue(key: string): void {
+export function deleteValue(key: string): boolean {
   const db = getDb();
-  db.prepare(`DELETE FROM ${TABLE_NAME} WHERE key=?;`).run(key);
+  return !!db.prepare(`DELETE FROM ${TABLE_NAME} WHERE key=?;`).run(key);
+}
+
+// Debugging purpose
+// TODO: Remove
+function getAllValues(): { key: string; value: string }[] {
+  const db = getDb();
+  return db
+    .prepare(`SELECT * FROM ${TABLE_NAME};`)
+    .all()
+    .map((r) => r as { key: string; value: string });
 }

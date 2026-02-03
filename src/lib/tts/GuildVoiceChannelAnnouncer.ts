@@ -1,5 +1,6 @@
 import {
   Collection,
+  GuildMember,
   VoiceState,
   type Guild,
   type VoiceBasedChannel,
@@ -8,6 +9,10 @@ import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { VoiceConnectionStatus } from "@discordjs/voice";
 import { GoogleProvider } from "./audio-provider/GoogleProvider";
+import { getAlias } from "./member-alias";
+import { memberJoinedChannel, memberLeftChannel } from "./announcer-phrases";
+import type { KeyValueOperations } from "@lib/common/util-types";
+import { PersistedMap } from "@lib/persist/persistedMap";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -20,16 +25,30 @@ type VoiceStateWithChannel = VoiceState & {
   channel: Exclude<VoiceState["channel"], null>;
 };
 
-interface LanguagePersistanceOperations {
-  set?(key: string, value: LanguageCode): void;
-  get?(key: string): LanguageCode | null | undefined;
-  delete?(key: string): void;
-}
+const DEFAULT_TEXT_LANG: LanguageCode = "en";
+const DEFAULT_VOICE_LANG: LanguageCode = "en";
 
-let languagePreferencePersistor:
-  | LanguagePersistanceOperations
-  | undefined
-  | null = null;
+const baseKey = "tts";
+const guildKey = (guildId: string) => `${baseKey}/${guildId}`;
+
+export function configureGVCAnnouncer(options: {
+  persist: {
+    text: KeyValueOperations<string, string>;
+    voice: KeyValueOperations<string, string>;
+  };
+}) {
+  _guildTextLanguageMap = new PersistedMap<Guild["id"], LanguageCode>({
+    persistance: options.persist.text,
+    toStringKey: (guildId: string) => `${guildKey(guildId)}/text/lang`,
+    toStringValue: (l) => l,
+  });
+
+  _guildVoiceLanguageMap = new PersistedMap<Guild["id"], LanguageCode>({
+    persistance: options.persist.voice,
+    toStringKey: (guildId: string) => `${guildKey(guildId)}/voice/lang`,
+    toStringValue: (l) => l,
+  });
+}
 
 /** Tracks guild. Will automatically spawn and despawn announcer when someone joins a channel */
 export function subscribeToGuild(guildId: Guild["id"]) {
@@ -103,9 +122,12 @@ async function onMemberDisconnect(oldState: VoiceStateWithChannel) {
   // Announcement Handling
   if (announcer) {
     // Announcement Handling
-    announcer.languageCode = getGuildDefaultLang(announcer.guild!.id!);
+    announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
     await announcer?.play(
-      makeUserLeftMessage(oldState, announcer.languageCode),
+      memberLeftChannel(
+        memberName(oldState.member!),
+        getGuildTextLanguage(oldState.guild.id),
+      ),
     );
   }
 }
@@ -129,9 +151,12 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
 
   if (announcer && announcerIsOnChannel(newState.channel)) {
     // Announcement Handling
-    announcer.languageCode = getGuildDefaultLang(announcer.guild!.id!);
+    announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
     await announcer?.play(
-      makeUserJoinedMessage(newState, announcer.languageCode),
+      memberJoinedChannel(
+        memberName(newState.member!),
+        getGuildTextLanguage(newState.guild.id),
+      ),
     );
   }
 }
@@ -159,8 +184,8 @@ export async function createTTSPlayer(
     tts: new GoogleProvider(),
   });
 
-  if (getGuildDefaultLang(guild.id)) {
-    player.languageCode = getGuildDefaultLang(guild.id)!;
+  if (getGuildVoiceLanguage(guild.id)) {
+    player.languageCode = getGuildVoiceLanguage(guild.id)!;
   }
 
   console.log(`Connecting... (${guild.name}, ${channel.name})`);
@@ -196,46 +221,16 @@ function announcerIsOnChannel(channel: VoiceBasedChannel) {
   return announcer.channel?.id == channel.id;
 }
 
-function makeUserLeftMessage(
-  vs: VoiceStateWithChannel,
-  language: LanguageCode = "en",
-) {
-  const name = vs.member?.nickname ?? vs.member?.user.displayName ?? "User";
-  switch (language) {
-    case "en":
-      return `${name} left your channel.`;
-    case "vi-VN":
-      return `${name} đã rời khỏi Channel của bạn.`;
-    default:
-      console.warn("Language code not implemented:", language);
-      return makeUserLeftMessage(vs, "en");
-  }
-}
+let _guildVoiceLanguageMap: KeyValueOperations<Guild["id"], LanguageCode> =
+  new Map();
+let _guildTextLanguageMap: KeyValueOperations<Guild["id"], LanguageCode> =
+  new Map();
 
-function makeUserJoinedMessage(
-  vs: VoiceStateWithChannel,
-  language: LanguageCode = "en",
-) {
-  const name = vs.member?.nickname ?? vs.member?.user.displayName ?? "User";
-  switch (language) {
-    case "en":
-      return `${name} joined your channel.`;
-    case "vi-VN":
-      return `${name} đã tham gia channel của bạn.`;
-    default:
-      console.warn("Language code not implemented:", language);
-      return makeUserJoinedMessage(vs, "en");
-  }
-}
-
-const _guildPreferredLanguages = new Collection<Guild["id"], LanguageCode>();
-
-export function setGuildDefaultLang(
+export function setGuildVoiceLanguage(
   guildId: Guild["id"],
   l: LanguageCode,
 ): void {
-  _guildPreferredLanguages.set(guildId, l);
-  languagePreferencePersistor?.set?.(guildId, l);
+  _guildVoiceLanguageMap.set(guildId, l);
 
   const announcer = getAnnouncer(guildId);
   if (announcer) {
@@ -243,14 +238,23 @@ export function setGuildDefaultLang(
   }
 }
 
-export function getGuildDefaultLang(guildId: Guild["id"]): LanguageCode {
-  return (
-    languagePreferencePersistor?.get?.(guildId) ??
-    _guildPreferredLanguages.get(guildId) ??
-    "en"
-  );
+export function getGuildVoiceLanguage(guildId: Guild["id"]): LanguageCode {
+  return _guildVoiceLanguageMap.get(guildId) ?? DEFAULT_VOICE_LANG;
 }
 
-export function setPersistance(actions: LanguagePersistanceOperations) {
-  languagePreferencePersistor = actions;
+export function setGuildTextLanguage(
+  guildId: Guild["id"],
+  l: LanguageCode,
+): void {
+  _guildTextLanguageMap.set(guildId, l);
+}
+
+export function getGuildTextLanguage(guildId: Guild["id"]): LanguageCode {
+  return _guildTextLanguageMap.get(guildId) ?? DEFAULT_TEXT_LANG;
+}
+
+function memberName(member: GuildMember): string {
+  return (
+    getAlias(member) ?? member.nickname ?? member.user.displayName ?? "User"
+  );
 }
