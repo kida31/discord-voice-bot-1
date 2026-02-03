@@ -14,7 +14,7 @@ export class GoogleCloudProvider implements TTSService {
   static EXTRA_FIELDS = ["language", "model", "speed"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd"
+    model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
     speed: 1.0,
   };
 
