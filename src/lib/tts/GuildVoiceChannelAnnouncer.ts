@@ -12,7 +12,7 @@ import { GoogleProvider } from "./audio-provider/GoogleProvider";
 import { getAlias } from "./member-alias";
 import { memberJoinedChannel, memberLeftChannel } from "./announcer-phrases";
 import type { KeyValueOperations } from "@lib/common/util-types";
-import { PersistedMap } from "@lib/persist/persistedMap";
+import { PersistedMap } from "@lib/persist/PersistedMap";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
