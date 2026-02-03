@@ -34,3 +34,35 @@ export function memberJoinedChannel(
       return memberJoinedChannel(name, "en");
   }
 }
+
+export function memberSelfMuted(name: string, language: LanguageCode = "en") {
+  switch (language) {
+    case "en":
+      return `${name} muted themselves.`;
+    case "vi-VN":
+      return `${name} đã tắt tiếng cho mình.`;
+    case "de-DE":
+      return `${name} hat sich gemutet.`;
+    case "ja-JP":
+      return `${name} 自分でミュートしました。`;
+    default:
+      console.warn("Language code not implemented:", language);
+      return memberSelfMuted(name, "en");
+  }
+}
+
+export function memberSelfUnmuted(name: string, language: LanguageCode = "en") {
+  switch (language) {
+    case "en":
+      return `${name} unmuted themselves.`;
+    case "vi-VN":
+      return `${name} đã bật tiếng cho mình.`;
+    case "de-DE":
+      return `${name} hat sich entmutet.`;
+    case "ja-JP":
+      return `${name} 自分のミュートを解除しました。`;
+    default:
+      console.warn("Language code not implemented:", language);
+      return memberSelfUnmuted(name, "en");
+  }
+}
