@@ -106,7 +106,7 @@ export class TTSPlayerImpl implements TTSPlayer {
     const payloads = await this.tts.create(text, {
       language: this.languageCode,
     });
-    console.log("Query result from tts service: []", payloads.length);
+    // console.log("Query result from tts service: []", payloads.length);
     for (const payload of payloads) {
       const resource = createAudioResource(
         payload.resource as any /*TODO: IDK WHAT TYPE HERE WORKS */,
