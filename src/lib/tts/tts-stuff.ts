@@ -2,12 +2,13 @@ import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
 
 // https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
-export type LanguageCode = "en" | "vi-VN" | "de-DE";
+export type LanguageCode = "en" | "vi-VN" | "de-DE" | "ja-JP";
 
 const botNickname: Collection<LanguageCode, string> = new Collection();
 botNickname.set("en", "Announcer");
 botNickname.set("vi-VN", "VTV4 Announcer");
 botNickname.set("de-DE", "BRD Sprecher");
+botNickname.set("ja-JP", "日本語アナウンサー");
 
 export function getNickname(l: LanguageCode): string {
   return botNickname.get(l) ?? botNickname.get("en")!;

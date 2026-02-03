@@ -7,9 +7,10 @@ import {
 } from "@lib/tts/GuildVoiceChannelAnnouncer";
 
 const languageOptions: { name: string; value: LanguageCode }[] = [
-  { name: "Vietnamese", value: "vi-VN" },
+  { name: "Deutsch", value: "de-DE" },
   { name: "English", value: "en" },
-  { name: "Deutsch (German)", value: "de-DE" },
+  { name: "Japanese", value: "ja-JP" },
+  { name: "Vietnamese", value: "vi-VN" },
 ] as const;
 
 const data = new SlashCommandBuilder()

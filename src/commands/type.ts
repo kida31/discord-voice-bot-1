@@ -14,6 +14,6 @@ export interface BaseCommand<T extends Interaction<CacheType>> {
 export interface ChatInputCommand extends BaseCommand<
   ChatInputCommandInteraction<CacheType>
 > {
-  data: SlashCommandOptionsOnlyBuilder | SlashCommandBuilder;
+//  data: SlashCommandOptionsOnlyBuilder | SlashCommandBuilder;
   execute(itx: ChatInputCommandInteraction<CacheType>): Promise<void>;
 }
