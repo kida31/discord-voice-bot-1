@@ -1,5 +1,6 @@
 import type { Guild } from "discord.js";
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
+import { Readable } from "stream";
 import { type TTSService, Payload } from "../tts-stuff";
 
 /**
@@ -48,11 +49,12 @@ export class GoogleCloudProvider implements TTSService {
       
       // Audio-Daten in einen Stream konvertieren
       if (response.audioContent) {
-        // audioContent ist bereits Uint8Array, nicht Base64
+        // audioContent ist bereits Uint8Array, in Stream konvertieren für discord.js voice
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
+        const audioStream = Readable.from(audioBuffer);
         
         return [
-          new Payload(audioBuffer, sentence, GoogleCloudProvider.NAME, extras),
+          new Payload(audioStream, sentence, GoogleCloudProvider.NAME, extras),
         ];
       }
 
