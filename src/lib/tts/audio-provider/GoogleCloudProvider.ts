@@ -35,10 +35,10 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language?: string; model?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string; prompt?: string; text?: string; speaker?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language?: string; modelName?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string; prompt?: string; text?: string; speaker?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
-      const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
+      const model = extras.modelName || GoogleCloudProvider.EXTRA_DEFAULTS.model;
 
       const languageCode = (extras.language || GoogleCloudProvider.EXTRA_DEFAULTS.language).toString().toLowerCase();
 
