@@ -18,7 +18,6 @@ export class GoogleCloudProvider implements TTSService {
     language: "en-US",
     model: "gemini-2.5-flash-tts", // "google_cloud_standard",  "chirp_3_hd", "gemini-2.5-flash-tts" #Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
     speed: 1.0,
-    voice: "en-US-Chirp3-HD-Leda", // z.B. "archernar" oder andere verfügbare Stimmen
     instruction: "Read in a anime waifu style, welcoming tone.",
   };
 
@@ -31,7 +30,7 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language: string; model?: string; speed?: number; ssml?: boolean; ssmlContent?: string; instruction?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
@@ -49,22 +48,9 @@ export class GoogleCloudProvider implements TTSService {
         input = { ssml: `<speak>${ssmlBody}</speak>` };
       }
 
-      // Build input: support plain text, SSML content, or instruction-based SSML
-      let input: { text?: string; ssml?: string } = { text: sentence };
-      if (extras.ssmlContent) {
-        input = { ssml: extras.ssmlContent };
-      } else if (extras.ssml || extras.instruction) {
-        const instruction = extras.instruction ?? "";
-        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const ssmlBody = `${instruction ? `<p>${esc(instruction)}</p>` : ""}<p>${esc(sentence)}</p>`;
-        input = { ssml: `<speak>${ssmlBody}</speak>` };
-      }
-
       const request = {
         input,
-        voice: {
-          languageCode: languageCode,
-        },
+        voice: { languageCode: languageCode },
         audioConfig: {
           audioEncoding: "LINEAR16" as const,
           speakingRate: extras.speed || 1.0,
@@ -115,13 +101,9 @@ export class GoogleCloudProvider implements TTSService {
   getPlayLogMessage(payload: Payload, guild: Guild) {
     const {
       sentence,
-      extras: { language, model, speed, voice, ssml, instruction },
+      extras: { language, model, speed },
     } = payload;
 
-    let msg = `(Google Cloud): Saying "${sentence}" with model ${model} voice ${voice} (${language}) at speed ${speed}`;
-    if (ssml) msg += ' (ssml)';
-    if (instruction) msg += ` instruction="${instruction}"`;
-    msg += ` in guild ${guild.name}.`;
-    return msg;
+    return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}) at speed ${speed} in guild ${guild.name}.`;
   }
 }
