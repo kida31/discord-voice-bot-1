@@ -52,7 +52,7 @@ export class GoogleCloudProvider implements TTSService {
           name: voice, // z.B. "archernar", "en-US-Neural2-C", etc.
         },
         audioConfig: {
-          audioEncoding: "MP3" as const,
+          audioEncoding: "LINEAR16" as const,
           speakingRate: extras.speed || 1.0,
         },
         model: model, // "chirp_3_hd" für kostenloses Modell
@@ -66,9 +66,9 @@ export class GoogleCloudProvider implements TTSService {
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
         console.log(`[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
         
-        // MP3 → OGG Opus konvertieren für HD Audio Quality auf Discord
+        // LINEAR16 → OGG Opus konvertieren für HD Audio Quality auf Discord
         const ffmpegProcess = spawn("ffmpeg", [
-          "-i", "pipe:0",           // Input from stdin (MP3)
+          "-i", "pipe:0",           // Input from stdin (LINEAR16 PCM)
           "-f", "ogg",              // Output format: OGG
           "-c:a", "libopus",        // Audio codec: Opus (HD Quality)
           "-b:a", "192k",           // Bitrate: 192k (HD Quality)
