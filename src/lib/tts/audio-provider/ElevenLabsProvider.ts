@@ -11,7 +11,7 @@ type ElevenVoiceSettings = {
 };
 
 /* =======================================================
-   Language → Voice Mapping (statisch, ohne ENV Overrides)
+   Language → Voice Mapping
    ======================================================= */
 
 const VOICE_BY_LANGUAGE: Record<string, string> = {
@@ -25,15 +25,9 @@ const VOICE_BY_LANGUAGE: Record<string, string> = {
   "vn": "a3AkyqGG4v8Pg7SWQ0Y3",
   "ko-KR": "sf8Bpb1IU97NI9BHSMRf",
   "ko": "sf8Bpb1IU97NI9BHSMRf",
-
-  // <<< TRAGE DEINE IDs HIER EIN >>>
-  // "de-DE": "DEINE_DE_ID",
-  // "de":    "DEINE_DE_BASE_ID",
-  // "ja-JP": "DEINE_JA_ID",
-  // "ja":    "DEINE_JA_BASE_ID",
 };
 
-const DEFAULT_VOICE_ID = "eVItLK1UvXctxuaRV2Oq";
+const DEFAULT_VOICE_ID = "eVItLK1UvXctxuaRV2Oq"; // english voices as default fallback
 
 function toBaseLang(tag?: string): string | undefined {
   if (!tag) return undefined;
@@ -48,7 +42,8 @@ function normalizeLangTag(lang?: string): string | undefined {
       en: "en-US",
       de: "de-DE",
       ja: "ja-JP",
-      pt: "pt-BR",
+      vn: "vn-VN",
+      ko: "ko-KR",
     };
     return defaults[lang] || lang;
   }
@@ -77,11 +72,11 @@ export class ElevenLabsProvider implements TTSService {
 
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "eleven_turbo_v2_5", //eleven_multilingual_v2"
+    model: "eleven_turbo_v2_5", //alternative "eleven_multilingual_v2" but VN not working with it 
     voiceId: DEFAULT_VOICE_ID,
-    stability: 0.5,
-    similarityBoost: 0.75,
-    style: 0.0,
+    stability: 0.4, // 0.0 (more random) bis 1.0 (more stable)
+    similarityBoost: 0.65, // 0.0 (less similar) bis 1.0 (more similar)
+    style: 0.3, // 0.0 (neutral) bis 1.0 (more style, e.g. emotional)
     speakerBoost: true,
     outputFormat: "opus_48000_128",
   };
