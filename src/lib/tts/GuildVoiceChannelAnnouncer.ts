@@ -1,7 +1,6 @@
 import {
   Collection,
   GuildMember,
-  Utils,
   VoiceState,
   type Guild,
   type VoiceBasedChannel,
