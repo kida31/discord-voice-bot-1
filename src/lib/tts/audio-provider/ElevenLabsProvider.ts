@@ -15,8 +15,8 @@ type ElevenVoiceSettings = {
    ======================================================= */
 
 const VOICE_BY_LANGUAGE: Record<string, string> = {
-  "en-US": "qxTFXDYbGcR8GaHSjczg", // English male voice (qxTFXDYbGcR8GaHSjczg) / English female voice (eVItLK1UvXctxuaRV2Oq) 
-  "en": "qxTFXDYbGcR8GaHSjczg",
+  "en-US": "eVItLK1UvXctxuaRV2Oq", // English male voice (qxTFXDYbGcR8GaHSjczg) / English female voice (eVItLK1UvXctxuaRV2Oq) 
+  "en": "eVItLK1UvXctxuaRV2Oq",
   "de-DE": "iwP1PxYYSTdHA1qXlwFe",
   "de": "iwP1PxYYSTdHA1qXlwFe",
   "ja-JP": "hMK7c1GPJmptCzI4bQIu",
@@ -27,7 +27,7 @@ const VOICE_BY_LANGUAGE: Record<string, string> = {
   "ko": "sf8Bpb1IU97NI9BHSMRf",
 };
 
-const DEFAULT_VOICE_ID = "qxTFXDYbGcR8GaHSjczg"; // english voices as default fallback
+const DEFAULT_VOICE_ID = "eVItLK1UvXctxuaRV2Oq"; // english voices as default fallback
 
 function toBaseLang(tag?: string): string | undefined {
   if (!tag) return undefined;
@@ -74,9 +74,9 @@ export class ElevenLabsProvider implements TTSService {
     language: "en-US",
     model: "eleven_turbo_v2_5", //alternative "eleven_multilingual_v2" but VN not working with it 
     voiceId: DEFAULT_VOICE_ID,
-    stability: 0.0, // 0.0 (more random) bis 1.0 (more stable)
-    similarityBoost: 0.3, // 0.0 (less similar) bis 1.0 (more similar)
-    style: 0.9, // 0.0 (neutral) bis 1.0 (more style, e.g. emotional)
+    stability: 0.4, // 0.0 (more random) bis 1.0 (more stable)
+    similarityBoost: 0.65, // 0.0 (less similar) bis 1.0 (more similar)
+    style: 0.3, // 0.0 (neutral) bis 1.0 (more style, e.g. emotional)
     speakerBoost: true,
     outputFormat: "opus_48000_128",
   };
