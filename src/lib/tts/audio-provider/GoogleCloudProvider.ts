@@ -13,12 +13,13 @@ export class GoogleCloudProvider implements TTSService {
   static NAME = "Google Cloud";
   static FRIENDLY_NAME = "Google Cloud Text-to-Speech Provider";
 
-  static EXTRA_FIELDS = ["language", "model", "speed", "voice"];
+  static EXTRA_FIELDS = ["language", "model", "speed", "voice", "pitch"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
     model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
     speed: 1.0,
     voice: "en-US-Chirp3-HD-Leda", // z.B. "archernar" oder andere verfügbare Stimmen
+    pitch: 0.0,
   };
 
   private client: TextToSpeechClient;
@@ -30,7 +31,7 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language: string; model?: string; speed?: number; voice?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
@@ -45,6 +46,8 @@ export class GoogleCloudProvider implements TTSService {
         }
       }
       
+      const pitchSemitones = extras.pitch ?? (languageCode && languageCode.startsWith("ja") ? 2.0 : 0.0);
+
       const request = {
         input: { text: sentence },
         voice: {
@@ -54,6 +57,7 @@ export class GoogleCloudProvider implements TTSService {
         audioConfig: {
           audioEncoding: "LINEAR16" as const,
           speakingRate: extras.speed || 1.0,
+          pitch: pitchSemitones,
         },
         model: model, // "chirp_3_hd" für kostenloses Modell
       };
@@ -101,9 +105,9 @@ export class GoogleCloudProvider implements TTSService {
   getPlayLogMessage(payload: Payload, guild: Guild) {
     const {
       sentence,
-      extras: { language, model, speed },
+      extras: { language, model, speed, pitch },
     } = payload;
 
-    return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}) at speed ${speed} in guild ${guild.name}.`;
+    return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}) at speed ${speed} pitch ${pitch} in guild ${guild.name}.`;
   }
 }
