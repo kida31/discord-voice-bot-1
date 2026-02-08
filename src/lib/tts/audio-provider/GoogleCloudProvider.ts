@@ -13,7 +13,7 @@ export class GoogleCloudProvider implements TTSService {
   static NAME = "Google Cloud";
   static FRIENDLY_NAME = "Google Cloud Text-to-Speech Provider";
 
-  static EXTRA_FIELDS = ["language", "model", "speed", "voice"];
+  static EXTRA_FIELDS = ["language", "model", "speed", "voice", "prompt", "text", "speaker"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
     model: "gemini-2.5-flash-tts", // "google_cloud_standard",  "chirp_3_hd", "gemini-2.5-flash-tts"
@@ -31,17 +31,19 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language?: string; model?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string; prompt?: string; text?: string; speaker?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
 
       const languageCode = (extras.language || GoogleCloudProvider.EXTRA_DEFAULTS.language).toString().toLowerCase();
 
-      // Build input: support prompt (instruction) + text, or SSML content
+      // Build input: support explicit prompt + text (or fallback to instruction/sentence), or SSML content
       // Matches example JSON: input: { prompt: "...", text: "..." }
-      let input: any = { text: sentence };
-      if (extras.instruction) input.prompt = extras.instruction;
+      const textSource = extras.text ?? sentence;
+      let input: any = { text: textSource };
+      if (extras.prompt) input.prompt = extras.prompt;
+      else if (extras.instruction) input.prompt = extras.instruction;
       if (extras.ssmlContent) {
         // If SSML provided explicitly, send ssml instead of prompt/text
         input = { ssml: extras.ssmlContent };
@@ -54,7 +56,9 @@ export class GoogleCloudProvider implements TTSService {
 
       const voiceObj: any = { languageCode };
       if (model) voiceObj.modelName = model;
-      if (extras.voice) voiceObj.name = extras.voice;
+      // Support both `speaker` (example) and `voice` (existing)
+      if (extras.speaker) voiceObj.name = extras.speaker;
+      else if (extras.voice) voiceObj.name = extras.voice;
 
       const request = {
         input,
@@ -107,10 +111,11 @@ export class GoogleCloudProvider implements TTSService {
   }
 
   getPlayLogMessage(payload: Payload, guild: Guild) {
-    const {
-      sentence,
-      extras: { language, model, speed, voice },
-    } = payload;
+    const { sentence } = payload;
+    const language = payload.extras.language;
+    const model = payload.extras.model;
+    const speed = payload.extras.speed;
+    const voice = payload.extras.speaker ?? payload.extras.voice;
 
     return `(Google Cloud): Saying "${sentence}" with model ${model} voice ${voice} (${language}) at speed ${speed} in guild ${guild.name}.`;
   }
