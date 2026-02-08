@@ -7,7 +7,7 @@ export function memberLeftChannel(name: string, language: LanguageCode = "en-US"
     case "en-US":
       return `${name} left your channel.`;
     case "de-DE":
-      return `${name} hat den Channel verlassen.`;
+      return `${name} hat den Squad verlassen!`;
     case "ja-JP":
       return `${name} チャンネルを離れました`;
     case "ko-KR":
