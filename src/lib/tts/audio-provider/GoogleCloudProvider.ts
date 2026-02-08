@@ -1,6 +1,7 @@
 import type { Guild } from "discord.js";
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { Readable } from "stream";
+import { spawn } from "child_process";
 import { type TTSService, Payload } from "../tts-stuff";
 
 /**
@@ -51,10 +52,27 @@ export class GoogleCloudProvider implements TTSService {
       if (response.audioContent) {
         // audioContent ist bereits Uint8Array, in Stream konvertieren für discord.js voice
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
-        const audioStream = Readable.from(audioBuffer);
+        console.log(`[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
+        
+        // MP3 → PCM konvertieren mit FFmpeg (Discord.js Voice braucht PCM oder Opus/OGG)
+        const ffmpegProcess = spawn("ffmpeg", [
+          "-i", "pipe:0",           // Input from stdin (MP3)
+          "-f", "s16le",            // Output format: 16-bit signed LE
+          "-ar", "48000",           // Sample rate: 48kHz (Discord Standard)
+          "-ac", "2",               // Channels: Stereo
+          "pipe:1",                 // Output to stdout
+        ]);
+        
+        ffmpegProcess.stdin.write(audioBuffer);
+        ffmpegProcess.stdin.end();
+        
+        // Error handling for FFmpeg
+        ffmpegProcess.stderr.on("data", (data) => {
+          console.error(`[FFmpeg] ${data}`);
+        });
         
         return [
-          new Payload(audioStream, sentence, GoogleCloudProvider.NAME, extras),
+          new Payload(ffmpegProcess.stdout, sentence, GoogleCloudProvider.NAME, extras),
         ];
       }
 
