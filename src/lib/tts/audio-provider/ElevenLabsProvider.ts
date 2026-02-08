@@ -1,11 +1,7 @@
-// src/tts/providers/ElevenLabsProvider.ts
 import type { Guild } from "discord.js";
 import { Readable, PassThrough } from "stream";
 import { spawn } from "child_process";
 import { type TTSService, Payload } from "../tts-stuff";
-
-// Node 18+ hat global fetch. Falls dein Node älter ist, optional:
-// import fetch from "node-fetch";
 
 type ElevenVoiceSettings = {
   stability?: number;
@@ -14,36 +10,37 @@ type ElevenVoiceSettings = {
   use_speaker_boost?: boolean;
 };
 
-/* ============================================
-   Language -> VoiceId Mapping (rein statisch)
-   ============================================ */
+/* =======================================================
+   Language → Voice Mapping (statisch, ohne ENV Overrides)
+   ======================================================= */
 
-// >>> Trage hier deine Voice-IDs ein <<<
-// Keys können "ll-CC" (z. B. "de-DE") ODER "ll" (z. B. "de") sein.
-// Reihenfolge der Verwendung: extras.voiceId > ll-CC > ll > DEFAULT_VOICE_ID
 const VOICE_BY_LANGUAGE: Record<string, string> = {
-  "en-US": "eVItLK1UvXctxuaRV2Oq", // aktueller Default
-  "de-DE": "iwP1PxYYSTdHA1qXlwFe",
-  "ja-JP": "hMK7c1GPJmptCzI4bQIu",
-  "vn-VN": "a3AkyqGG4v8Pg7SWQ0Y3",
-  "ko-KR": "sf8Bpb1IU97NI9BHSMRf",
-  // Basis-Sprachen optional:
+  "en-US": "eVItLK1UvXctxuaRV2Oq",
   "en": "eVItLK1UvXctxuaRV2Oq",
-  // "de": "<DEINE_DE_BASE_VOICE_ID>",
-  // "ja": "<DEINE_JA_BASE_VOICE_ID>",
+  "de-DE": "iwP1PxYYSTdHA1qXlwFe",
+  "de": "iwP1PxYYSTdHA1qXlwFe",
+  "ja-JP": "hMK7c1GPJmptCzI4bQIu",
+  "ja": "hMK7c1GPJmptCzI4bQIu",
+  "vn-VN": "a3AkyqGG4v8Pg7SWQ0Y3",
+  "vn": "a3AkyqGG4v8Pg7SWQ0Y3",
+  "ko-KR": "sf8Bpb1IU97NI9BHSMRf",
+  "ko": "sf8Bpb1IU97NI9BHSMRf",
+
+  // <<< TRAGE DEINE IDs HIER EIN >>>
+  // "de-DE": "DEINE_DE_ID",
+  // "de":    "DEINE_DE_BASE_ID",
+  // "ja-JP": "DEINE_JA_ID",
+  // "ja":    "DEINE_JA_BASE_ID",
 };
 
-// Globaler Fallback, falls keine Sprache matched:
 const DEFAULT_VOICE_ID = "eVItLK1UvXctxuaRV2Oq";
 
-/** "de-DE" | "de" -> "de" */
 function toBaseLang(tag?: string): string | undefined {
   if (!tag) return undefined;
   const m = tag.match(/^([a-z]{2,3})(?:-[A-Z]{2})?$/);
   return m ? m[1] : undefined;
 }
 
-/** Nur Sprachcode angegeben? -> auf Standard-Region heben (anpassbar) */
 function normalizeLangTag(lang?: string): string | undefined {
   if (!lang) return undefined;
   if (/^[a-z]{2,3}$/.test(lang)) {
@@ -58,7 +55,6 @@ function normalizeLangTag(lang?: string): string | undefined {
   return lang;
 }
 
-/** Wähle VoiceId anhand Sprache (ll-CC → ll → default) */
 function pickVoiceIdByLanguage(lang?: string): string {
   if (!lang) return DEFAULT_VOICE_ID;
   if (VOICE_BY_LANGUAGE[lang]) return VOICE_BY_LANGUAGE[lang];
@@ -66,6 +62,8 @@ function pickVoiceIdByLanguage(lang?: string): string {
   if (base && VOICE_BY_LANGUAGE[base]) return VOICE_BY_LANGUAGE[base];
   return DEFAULT_VOICE_ID;
 }
+
+/* ============================================================== */
 
 export class ElevenLabsProvider implements TTSService {
   static NAME = "ElevenLabs";
@@ -79,13 +77,12 @@ export class ElevenLabsProvider implements TTSService {
 
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "eleven_multilingual_v2",   // hochwertige, mehrsprachige Qualität
+    model: "eleven_multilingual_v2",
     voiceId: DEFAULT_VOICE_ID,
     stability: 0.5,
     similarityBoost: 0.75,
     style: 0.0,
     speakerBoost: true,
-    // Für Discord optimal: 48 kHz Opus (kann direkt als Ogg/Opus gespielt werden)
     outputFormat: "opus_48000_128",
   };
 
@@ -93,70 +90,60 @@ export class ElevenLabsProvider implements TTSService {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey ?? process.env.ELEVENLABS_API_KEY ?? "";
-    if (!this.apiKey) throw new Error("Missing ELEVENLABS_API_KEY for ElevenLabsProvider");
+    if (!this.apiKey) {
+      throw new Error("Missing ELEVENLABS_API_KEY");
+    }
   }
 
-  /** "ll-CC" -> "ll" (für language_code bei multilingualen Modellen) */
   private static toIso639_1(langTag?: string): string | undefined {
     if (!langTag) return undefined;
     const m = langTag.match(/^([a-z]{2,3})-[A-Z]{2}$/);
-    return m ? m[1] : undefined; // 'de-DE' -> 'de'
+    return m ? m[1] : undefined;
   }
 
-  /** Erkennung: "OggS" am Anfang? */
   private static looksLikeOgg(buf: Uint8Array): boolean {
-    return buf.length >= 4 && buf[0] === 0x4F && buf[1] === 0x67 && buf[2] === 0x67 && buf[3] === 0x53;
+    return buf.length >= 4 &&
+      buf[0] === 0x4F &&
+      buf[1] === 0x67 &&
+      buf[2] === 0x67 &&
+      buf[3] === 0x53;
   }
 
-  /** Erkennung: MP3? (ID3-Header oder Frame-Sync 0xFFEx/0xFFFB etc.) */
   private static looksLikeMp3(buf: Uint8Array): boolean {
     if (buf.length < 3) return false;
-    const id3 = buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33; // "ID3"
+    const id3 = buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33;
     const frameSync = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
     return id3 || frameSync;
   }
 
   async create(
     sentence: string,
-    extras: {
-      language?: string;
-      model?: string;
-      voiceId?: string;
-      stability?: number;
-      similarityBoost?: number;
-      style?: number;
-      speakerBoost?: boolean;
-      outputFormat?: string; // z.B. "opus_48000_128"
-    } = ElevenLabsProvider.EXTRA_DEFAULTS
+    extras = ElevenLabsProvider.EXTRA_DEFAULTS
   ): Promise<Payload[]> {
-    // Sprache vorbereiten & Voice wählen
-    const langInput = extras.language || ElevenLabsProvider.EXTRA_DEFAULTS.language;
-    const langTag = normalizeLangTag(langInput);
+
+    const langTag = normalizeLangTag(extras.language || "en-US");
     const language_code = ElevenLabsProvider.toIso639_1(langTag);
 
     const model = extras.model || ElevenLabsProvider.EXTRA_DEFAULTS.model;
-    const outputFormat = extras.outputFormat || ElevenLabsProvider.EXTRA_DEFAULTS.outputFormat;
+    const outputFormat = extras.outputFormat || "opus_48000_128";
 
     const voiceId =
-      extras.voiceId /* explizit gewinnt */ ??
+      extras.voiceId ??
       pickVoiceIdByLanguage(langTag);
 
     const voice_settings: ElevenVoiceSettings = {
-      stability: typeof extras.stability === "number" ? extras.stability : ElevenLabsProvider.EXTRA_DEFAULTS.stability,
-      similarity_boost:
-        typeof extras.similarityBoost === "number" ? extras.similarityBoost : ElevenLabsProvider.EXTRA_DEFAULTS.similarityBoost,
-      style: typeof extras.style === "number" ? extras.style : ElevenLabsProvider.EXTRA_DEFAULTS.style,
-      use_speaker_boost:
-        typeof extras.speakerBoost === "boolean" ? extras.speakerBoost : ElevenLabsProvider.EXTRA_DEFAULTS.speakerBoost,
+      stability: extras.stability ?? 0.5,
+      similarity_boost: extras.similarityBoost ?? 0.75,
+      style: extras.style ?? 0.0,
+      use_speaker_boost: extras.speakerBoost ?? true,
     };
 
-    // === ElevenLabs REST-API ===
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
     const body = {
       text: sentence,
       model_id: model,
       voice_settings,
-      output_format: outputFormat, // Opus 48 kHz anfordern
+      output_format: outputFormat,
       ...(language_code ? { language_code } : {}),
     };
 
@@ -172,38 +159,35 @@ export class ElevenLabsProvider implements TTSService {
 
     if (!res.ok || !res.body) {
       const text = await res.text().catch(() => "");
-      throw new Error(`ElevenLabs TTS failed: HTTP ${res.status} ${res.statusText} ${text}`);
+      throw new Error(`ElevenLabs TTS failed: HTTP ${res.status} – ${text}`);
     }
 
-    // Content-Type zu Diagnosezwecken loggen (z. B. audio/ogg, audio/mpeg, audio/opus)
-    const contentType = res.headers.get("content-type") || "";
+    const contentType = res.headers.get("content-type") ?? "";
     console.log(`[ElevenLabs] content-type: ${contentType}`);
 
-    // === Peek für Format-Erkennung (Ogg/Opus direkt durchreichen) ===
     const reader = res.body.getReader();
     const peekChunks: Uint8Array[] = [];
     let received = 0;
-    const peekTarget = 65536;
 
-    while (received < peekTarget) {
+    while (received < 65536) {
       const { value, done } = await reader.read();
       if (done) break;
-      if (value && value.length) {
+      if (value) {
         peekChunks.push(value);
         received += value.length;
-        if (received >= 4) break; // OggS-Prüfung reicht
+        if (received >= 4) break;
       }
     }
 
-    const first = peekChunks.length ? peekChunks[0] : new Uint8Array(0);
+    const first = peekChunks[0] ?? new Uint8Array(0);
     const isOgg = ElevenLabsProvider.looksLikeOgg(first);
     const isMp3 = ElevenLabsProvider.looksLikeMp3(first);
-    const expectedOpus = (outputFormat ?? "").startsWith("opus_48000");
+    const expectedOpus = outputFormat.startsWith("opus_48000");
 
     if (isOgg) {
-      // Fast-Path: direkt als Ogg/Opus an Discord (kein FFmpeg)
       const pass = new PassThrough();
       for (const c of peekChunks) pass.write(Buffer.from(c));
+
       (async () => {
         for (;;) {
           const { value, done } = await reader.read();
@@ -213,18 +197,116 @@ export class ElevenLabsProvider implements TTSService {
         pass.end();
       })();
 
-      const usedExtras = {
-        ...extras,
-        language: langTag,
-        model,
-        voiceId,
-        outputFormat,
-        container: "ogg",
-        codec: "opus",
-        note: "fast-path (no ffmpeg)",
-      };
-
-      return [new Payload(pass as unknown as Readable, sentence, ElevenLabsProvider.NAME, usedExtras)];
+      return [
+        new Payload(
+          pass as unknown as Readable,
+          sentence,
+          ElevenLabsProvider.NAME,
+          {
+            ...extras,
+            language: langTag,
+            model,
+            voiceId,
+            container: "ogg",
+            codec: "opus",
+            note: "fast-path (no ffmpeg)",
+          }
+        ),
+      ];
     }
 
-    // === FFmpeg-Fallback ===
+    const remuxArgs = ["-i", "pipe:0", "-f", "ogg", "-c:a", "copy", "pipe:1"];
+    const transcodeArgs = [
+      "-i", "pipe:0",
+      "-f", "ogg",
+      "-c:a", "libopus",
+      "-b:a", "128k",
+      "-ar", "48000",
+      "-ac", "2",
+      "pipe:1",
+    ];
+
+    let ffmpeg = spawn(
+      "ffmpeg",
+      isMp3 || contentType.includes("mpeg")
+        ? transcodeArgs
+        : expectedOpus
+        ? remuxArgs
+        : transcodeArgs
+    );
+
+    let retried = false;
+
+    ffmpeg.stderr.on("data", (d) => {
+      const msg = d.toString();
+      console.error("[FFmpeg]", msg);
+
+      if (!retried && /Unsupported codec|Invalid argument|write header/.test(msg)) {
+        retried = true;
+        try {
+          ffmpeg.kill("SIGKILL");
+        } catch {}
+
+        ffmpeg = spawn("ffmpeg", transcodeArgs);
+
+        for (const c of peekChunks) ffmpeg.stdin.write(Buffer.from(c));
+
+        (async () => {
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) ffmpeg.stdin.write(Buffer.from(value));
+          }
+          ffmpeg.stdin.end();
+        })();
+      }
+    });
+
+    for (const c of peekChunks) ffmpeg.stdin.write(Buffer.from(c));
+
+    (async () => {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) ffmpeg.stdin.write(Buffer.from(value));
+      }
+      ffmpeg.stdin.end();
+    })();
+
+    return [
+      new Payload(
+        ffmpeg.stdout as unknown as Readable,
+        sentence,
+        ElevenLabsProvider.NAME,
+        {
+          ...extras,
+          language: langTag,
+          model,
+          voiceId,
+          container: "ogg",
+          codec: "opus",
+          note: retried
+            ? "transcoded (libopus)"
+            : isMp3
+            ? "transcoded (mp3->opus)"
+            : expectedOpus
+            ? "remux (copy)"
+            : "transcoded",
+        }
+      ),
+    ];
+  }
+
+  getPlayLogMessage(payload: Payload, guild: Guild) {
+    const {
+      sentence,
+      extras: { language, model, voiceId, outputFormat, container, codec, note },
+    } = payload;
+
+    return `(ElevenLabs): Saying "${sentence}" with model ${model} `
+      + `(${language}, voiceId: ${voiceId}, ${outputFormat}, `
+      + `${container}/${codec}${note ? ", " + note : ""}) in guild ${guild.name}.`;
+  }
+}
+
+export default ElevenLabsProvider;
