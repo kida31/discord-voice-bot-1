@@ -2,6 +2,10 @@ import type { Guild } from "discord.js";
 import { TextToSpeechClient } from "@google-cloud/text-to-speech";
 import { Readable } from "stream";
 import { spawn } from "child_process";
+import fs from "fs";
+import crypto from "crypto";
+import https from "https";
+import { URL } from "url";
 import { type TTSService, Payload } from "../tts-stuff";
 
 /**
@@ -70,8 +74,48 @@ export class GoogleCloudProvider implements TTSService {
         },
       };
 
+      // If user requests a Gemini-like model, try HTTP Vertex-style request with explicit prompt/speaker
+      if ((model && model.toString().toLowerCase().includes("gemini")) || (extras as any).useHttp) {
+        try {
+          const httpResp = await this.sendVertexTTSRequest({
+            model: model,
+            input: input,
+            voice: voiceObj,
+            audioConfig: request.audioConfig,
+          });
+
+          if (httpResp && httpResp.audioContent) {
+            const audioBuffer = Buffer.from(httpResp.audioContent, "base64");
+            console.log(`[GoogleCloud TTS - HTTP] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
+
+            const ffmpegProcess = spawn("ffmpeg", [
+              "-i", "pipe:0",
+              "-f", "ogg",
+              "-c:a", "libopus",
+              "-b:a", "192k",
+              "-ar", "48000",
+              "-ac", "2",
+              "-application", "voip",
+              "pipe:1",
+            ]);
+
+            ffmpegProcess.stdin.write(audioBuffer);
+            ffmpegProcess.stdin.end();
+
+            ffmpegProcess.stderr.on("data", (data) => {
+              console.error(`[FFmpeg] ${data}`);
+            });
+
+            return [new Payload(ffmpegProcess.stdout, sentence, GoogleCloudProvider.NAME, extras)];
+          }
+        } catch (e) {
+          console.warn("Vertex HTTP TTS attempt failed, falling back to client library:", e);
+          // fall through to client synthesizeSpeech
+        }
+      }
+
       const [response] = await this.client.synthesizeSpeech(request);
-      
+
       // Audio-Daten in einen Stream konvertieren
       if (response.audioContent) {
         // audioContent ist bereits Uint8Array, in Stream konvertieren für discord.js voice
@@ -118,5 +162,77 @@ export class GoogleCloudProvider implements TTSService {
     const voice = payload.extras.speaker ?? payload.extras.voice;
 
     return `(Google Cloud): Saying "${sentence}" with model ${model} voice ${voice} (${language}) at speed ${speed} in guild ${guild.name}.`;
+  }
+
+  private async sendVertexTTSRequest(body: any): Promise<any> {
+    // Try to obtain access token via service account JSON pointed by GOOGLE_APPLICATION_CREDENTIALS
+    const saPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!saPath) throw new Error("GOOGLE_APPLICATION_CREDENTIALS is not set for HTTP TTS request");
+
+    const saJson = JSON.parse(fs.readFileSync(saPath, "utf8"));
+    const now = Math.floor(Date.now() / 1000);
+    const header = { alg: "RS256", typ: "JWT" };
+    const payload = {
+      iss: saJson.client_email,
+      scope: "https://www.googleapis.com/auth/cloud-platform",
+      aud: "https://oauth2.googleapis.com/token",
+      exp: now + 3600,
+      iat: now,
+    };
+
+    const encode = (obj: any) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+    const unsigned = `${encode(header)}.${encode(payload)}`;
+    const signer = crypto.createSign("RSA-SHA256");
+    signer.update(unsigned);
+    signer.end();
+    const signature = signer.sign(saJson.private_key, "base64url");
+    const jwt = `${unsigned}.${signature}`;
+
+    // Exchange JWT for access token
+    const tokenResp = await new Promise<any>((resolve, reject) => {
+      const postData = new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }).toString();
+      const req = https.request(
+        "https://oauth2.googleapis.com/token",
+        { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "Content-Length": Buffer.byteLength(postData) } },
+        (res) => {
+          let data = "";
+          res.on("data", (c) => (data += c));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) resolve(JSON.parse(data));
+            else reject(new Error(`Token request failed ${res.statusCode}: ${data}`));
+          });
+        },
+      );
+      req.on("error", reject);
+      req.write(postData);
+      req.end();
+    });
+
+    const accessToken = tokenResp.access_token;
+    if (!accessToken) throw new Error("No access token from service account JWT exchange");
+
+    // Call TTS endpoint. Use v1 endpoint as a default; models may differ per project/region.
+    const endpoint = "https://texttospeech.googleapis.com/v1/text:synthesize";
+
+    const resp = await new Promise<any>((resolve, reject) => {
+      const req = https.request(
+        endpoint,
+        { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" } },
+        (res) => {
+          let data = "";
+          res.on("data", (c) => (data += c));
+          res.on("end", () => {
+            if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) resolve(JSON.parse(data));
+            else reject(new Error(`TTS request failed ${res.statusCode}: ${data}`));
+          });
+        },
+      );
+
+      req.on("error", reject);
+      req.write(JSON.stringify(body));
+      req.end();
+    });
+
+    return resp;
   }
 }
