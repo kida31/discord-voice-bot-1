@@ -35,10 +35,10 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language?: string; modelName?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string; prompt?: string; text?: string; speaker?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language?: string; model?: string; speed?: number; voice?: string; ssml?: boolean; ssmlContent?: string; instruction?: string; prompt?: string; text?: string; speaker?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
-      const model = extras.modelName || GoogleCloudProvider.EXTRA_DEFAULTS.model;
+      const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
 
       const languageCode = (extras.language || GoogleCloudProvider.EXTRA_DEFAULTS.language).toString().toLowerCase();
 
@@ -214,6 +214,17 @@ export class GoogleCloudProvider implements TTSService {
     // Call TTS endpoint. Use v1 endpoint as a default; models may differ per project/region.
     const endpoint = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
+    // Some endpoints expect model information inside the voice object (e.g. voice.modelName).
+    const payloadToSend: any = {
+      input: body.input,
+      voice: { ...(body.voice || {}) },
+      audioConfig: body.audioConfig,
+    };
+    if (body.model) {
+      // map top-level `model` → `voice.modelName` to avoid Unknown field errors
+      payloadToSend.voice.modelName = body.model;
+    }
+
     const resp = await new Promise<any>((resolve, reject) => {
       const req = https.request(
         endpoint,
@@ -229,7 +240,7 @@ export class GoogleCloudProvider implements TTSService {
       );
 
       req.on("error", reject);
-      req.write(JSON.stringify(body));
+      req.write(JSON.stringify(payloadToSend));
       req.end();
     });
 
