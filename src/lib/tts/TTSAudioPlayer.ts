@@ -11,9 +11,11 @@ import {
   PlayerSubscription,
   VoiceConnection,
   VoiceConnectionStatus,
+  StreamType,
   type VoiceConnectionState,
 } from "@discordjs/voice";
 import { type Guild, type VoiceBasedChannel } from "discord.js";
+import { Readable } from "stream";
 import { FIFOQueue } from "../common/FIFOQueue";
 import type { LanguageCode, Payload, TTSPlayer, TTSService } from "./tts-stuff";
 
@@ -21,6 +23,7 @@ type PayloadWithResource = {
   payload: Payload;
   resource: AudioResource;
 };
+
 export class TTSPlayerImpl implements TTSPlayer {
   player: AudioPlayer;
   tts: TTSService;
@@ -41,10 +44,17 @@ export class TTSPlayerImpl implements TTSPlayer {
       behaviors: {
         noSubscriber: NoSubscriberBehavior.Stop,
       },
-    }).on(AudioPlayerStatus.Idle, () => {
-      const next = this.queue.dequeue();
-      if (!!next) this.player.play(next.resource);
-    });
+    })
+      .on(AudioPlayerStatus.Idle, () => {
+        const next = this.queue.dequeue();
+        if (!!next) this.player.play(next.resource);
+      })
+      .on("error", (err) => {
+        console.error("[AudioPlayer] error:", err);
+        // optional: nächstes Element spielen, um nicht zu hängen
+        const next = this.queue.dequeue();
+        if (!!next) this.player.play(next.resource);
+      });
 
     this.tts = tts!;
   }
@@ -92,6 +102,26 @@ export class TTSPlayerImpl implements TTSPlayer {
     return this.player.state.status == AudioPlayerStatus.Playing;
   }
 
+  /**
+   * Bestimme, ob wir die Resource direkt als Ogg/Opus an Discord geben können.
+   * Das klappt ohne FFmpeg im Hintergrund, wenn wir StreamType.OggOpus setzen.
+   * (siehe discord.js Guide) [1](https://discordjs.guide/voice/audio-resources)
+   */
+  private inferStreamTypeFromPayload(payload: Payload): StreamType | undefined {
+    // Viele Provider (ElevenLabs/Google-FFmpeg) liefern am Ende Ogg/Opus:
+    // In meinem ElevenLabsProvider werden extras.container="ogg" und extras.codec="opus" gesetzt.
+    const extras: any = (payload as any).extras ?? {};
+    const container = (extras.container || "").toString().toLowerCase();
+    const codec = (extras.codec || "").toString().toLowerCase();
+
+    if (container === "ogg" && codec === "opus") {
+      return StreamType.OggOpus; // direkter Pfad in Discord
+    }
+
+    // Fallback: undefined -> Discord behandelt es als "unknown" und nutzt intern FFmpeg
+    return undefined;
+  }
+
   async play(text: string) {
     if (
       !this.guild ||
@@ -106,14 +136,26 @@ export class TTSPlayerImpl implements TTSPlayer {
     const payloads = await this.tts.create(text, {
       language: this.languageCode,
     });
-    // console.log("Query result from tts service: []", payloads.length);
+
     for (const payload of payloads) {
-      const resource = createAudioResource(
-        payload.resource as any /*TODO: IDK WHAT TYPE HERE WORKS */,
-        {
-          metadata: { title: payload.sentence },
-        },
-      );
+      // payload.resource ist ein Readable-Stream
+      const input = payload.resource as unknown as Readable;
+
+      // Wenn Ogg/Opus, dann direkt:
+      const inferredType = this.inferStreamTypeFromPayload(payload);
+
+      const resource = createAudioResource(input, {
+        metadata: { title: payload.sentence },
+        // Wenn wir Ogg/Opus sicher wissen, teile es Discord mit:
+        ...(inferredType ? { inputType: inferredType } : {}),
+        // inlineVolume absichtlich nicht aktivieren -> bessere Performance
+      });
+
+      // Fehler-Logging direkt auf der Resource (optional)
+      resource.playStream.on("error", (err) => {
+        console.error("[AudioResource] stream error:", err);
+      });
+
       if (this.isSpeaking) {
         this.queue.enqueue({ payload, resource });
       } else {
@@ -132,7 +174,7 @@ export class TTSPlayerImpl implements TTSPlayer {
   destroy() {
     this.subscription?.unsubscribe();
     this.connection?.destroy();
-
     this.player.stop();
   }
 }
+``
