@@ -13,12 +13,12 @@ export class GoogleCloudProvider implements TTSService {
   static NAME = "Google Cloud";
   static FRIENDLY_NAME = "Google Cloud Text-to-Speech Provider";
 
-  static EXTRA_FIELDS = ["language", "model", "speed", "voice"];
+  static EXTRA_FIELDS = ["language", "model", "speed"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
+    model: "gemini-2.5-flash-tts", // "google_cloud_standard",  "chirp_3_hd", "gemini-2.5-flash-tts"
     speed: 1.0,
-    voice: "en-US-Chirp3-HD-Leda", // z.B. "archernar" oder andere verfügbare Stimmen
+    instruction: "Read in a anime waifu style, welcoming tone.",
   };
 
   private client: TextToSpeechClient;
@@ -30,32 +30,34 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language: string; model?: string; speed?: number; ssml?: boolean; ssmlContent?: string; instruction?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
-      const voice = extras.voice || GoogleCloudProvider.EXTRA_DEFAULTS.voice;
-      
-      // Extrahiere language code aus voice name (z.B. "en-US-Neural2-C" -> "en-US")
-      let languageCode = extras.language;
-      if (voice && voice.includes("-")) {
-        const voiceParts = voice.split("-");
-        if (voiceParts.length >= 2) {
-          languageCode = `${voiceParts[0]}-${voiceParts[1]}`;
-        }
+
+      const languageCode = extras.language;
+
+      // Build input: support plain text, SSML content, or instruction-based SSML
+      let input: { text?: string; ssml?: string } = { text: sentence };
+      if (extras.ssmlContent) {
+        input = { ssml: extras.ssmlContent };
+      } else if (extras.ssml || extras.instruction) {
+        const instruction = extras.instruction ?? "";
+        const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const ssmlBody = `${instruction ? `<p>${esc(instruction)}</p>` : ""}<p>${esc(sentence)}</p>`;
+        input = { ssml: `<speak>${ssmlBody}</speak>` };
       }
-      
+
       const request = {
-        input: { text: sentence },
+        input,
         voice: {
           languageCode: languageCode,
-          name: voice, // z.B. "archernar", "en-US-Neural2-C", etc.
         },
         audioConfig: {
           audioEncoding: "LINEAR16" as const,
           speakingRate: extras.speed || 1.0,
         },
-        model: model, // "chirp_3_hd" für kostenloses Modell
+        model: model, // z.B. "chirp_3_hd" oder "gemini-2.5-flash-tts"
       };
 
       const [response] = await this.client.synthesizeSpeech(request);
