@@ -28,7 +28,7 @@ export function memberJoinedChannel(
     case "vi-VN":
       return `${name} đã tham gia channel`;
     case "de-DE":
-      return `${name} ist dem Channel beigetreten.`;
+      return `${name} ist jetzt am Start!`;
     case "ja-JP":
       return `${name} チャンネルに参加しました。`;
     case "ko-KR":      

@@ -18,7 +18,7 @@ export class GoogleCloudProvider implements TTSService {
     language: "en-US",
     model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
     speed: 1.0,
-    voice: "en-US-Chirp3-HD-Leda", // z.B. "archernar" oder andere verfügbare Stimmen
+    voice: "en-US-Chirp3-HD-Zephyr", // z.B. "archernar" oder andere verfügbare Stimmen
     pitch: 0.0,
   };
 
