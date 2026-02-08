@@ -36,12 +36,14 @@ export class GoogleCloudProvider implements TTSService {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
 
-      const languageCode = extras.language;
+      const languageCode = (extras.language || GoogleCloudProvider.EXTRA_DEFAULTS.language).toString().toLowerCase();
 
-      // Build input: support plain text, SSML content, or instruction-based SSML
-      // Map: extras.instruction acts as the prompt/text when provided
-      let input: { text?: string; ssml?: string } = { text: extras.instruction ?? sentence };
+      // Build input: support prompt (instruction) + text, or SSML content
+      // Matches example JSON: input: { prompt: "...", text: "..." }
+      let input: any = { text: sentence };
+      if (extras.instruction) input.prompt = extras.instruction;
       if (extras.ssmlContent) {
+        // If SSML provided explicitly, send ssml instead of prompt/text
         input = { ssml: extras.ssmlContent };
       } else if (extras.ssml) {
         const instruction = extras.instruction ?? "";
@@ -50,7 +52,8 @@ export class GoogleCloudProvider implements TTSService {
         input = { ssml: `<speak>${ssmlBody}</speak>` };
       }
 
-      const voiceObj: any = { languageCode: languageCode };
+      const voiceObj: any = { languageCode };
+      if (model) voiceObj.modelName = model;
       if (extras.voice) voiceObj.name = extras.voice;
 
       const request = {
@@ -58,9 +61,9 @@ export class GoogleCloudProvider implements TTSService {
         voice: voiceObj,
         audioConfig: {
           audioEncoding: "LINEAR16" as const,
+          pitch: extras.pitch ?? 0,
           speakingRate: extras.speed || 1.0,
         },
-        model: model, // z.B. "chirp_3_hd" oder "gemini-2.5-flash-tts"
       };
 
       const [response] = await this.client.synthesizeSpeech(request);
