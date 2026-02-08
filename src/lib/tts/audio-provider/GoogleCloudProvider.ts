@@ -4,11 +4,6 @@ import { Readable } from "stream";
 import { spawn } from "child_process";
 import { type TTSService, Payload } from "../tts-stuff";
 
-/**
- * A concrete TTS provider for the Google Cloud Text-to-Speech API.
- * Benötigt: npm install @google-cloud/text-to-speech
- * Und Google Cloud Credentials: https://cloud.google.com/docs/authentication/getting-started
- */
 export class GoogleCloudProvider implements TTSService {
   static NAME = "Google Cloud";
   static FRIENDLY_NAME = "Google Cloud Text-to-Speech Provider";
@@ -16,82 +11,141 @@ export class GoogleCloudProvider implements TTSService {
   static EXTRA_FIELDS = ["language", "model", "speed", "voice", "pitch"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
+    model: "chirp_3_hd", // kostenlos
+    voice: "en-US-Chirp3-HD-Zephyr",
     speed: 1.0,
-    voice: "en-US-Chirp3-HD-Zephyr", // z.B. "archernar" oder andere verfügbare Stimmen
     pitch: 0.0,
   };
 
   private client: TextToSpeechClient;
 
   constructor() {
-    // Stellt sicher, dass GOOGLE_APPLICATION_CREDENTIALS Umgebungsvariable gesetzt ist
     this.client = new TextToSpeechClient();
+  }
+
+  /** Map: Default-Voices pro Sprache (erweiterbar) */
+  private static DEFAULT_VOICE_BY_LANG: Record<string, string> = {
+    "en-US": "en-US-Chirp3-HD-Zephyr",
+    "de-DE": "de-DE-Chirp3-HD-Zephyr",
+    "fr-FR": "fr-FR-Chirp3-HD-Zephyr",
+    "es-ES": "es-ES-Chirp3-HD-Zephyr",
+    "pt-BR": "pt-BR-Chirp3-HD-Zephyr",
+    "ja-JP": "ja-JP-Chirp3-HD-Zephyr",
+    "ko-KR": "ko-KR-Chirp3-HD-Zephyr",
+    "cmn-CN": "cmn-CN-Chirp3-HD-Zephyr",
+    // Füge hier weitere gewünschte Defaults hinzu
+  };
+
+  /** Prüft, ob language ein valider Prefix ll-CC ist (ll=2-3 lowercase, CC=2 uppercase) */
+  private static isLanguageTag(tag?: string): tag is string {
+    return !!tag && /^[a-z]{2,3}-[A-Z]{2}$/.test(tag);
+  }
+
+  /**
+   * Passt eine gegebene Voice so an, dass ihr Prefix (ll-CC) dem gewünschten language entspricht.
+   * Beispiele:
+   *  - language = "de-DE", voice = "en-US-Chirp3-HD-Zephyr"  -> "de-DE-Chirp3-HD-Zephyr"
+   *  - language = "cmn-CN", voice = "cmn-TW-Standard-A"      -> "cmn-CN-Standard-A"
+   *  - voice nicht gesetzt -> nutze Default-Voice für language (falls vorhanden)
+   */
+  private static normalizeVoiceForLanguage(language: string, voice?: string): string {
+    const lang = this.isLanguageTag(language) ? language : GoogleCloudProvider.EXTRA_DEFAULTS.language;
+
+    // Falls keine Voice gesetzt ist, nimm eine passende Default-Voice pro Sprache (oder fallback)
+    if (!voice || voice.trim().length === 0) {
+      return (
+        GoogleCloudProvider.DEFAULT_VOICE_BY_LANG[lang] ??
+        // Fallback: nimm die Default-Voice, passe Prefix an
+        GoogleCloudProvider.EXTRA_DEFAULTS.voice.replace(/^[a-z]{2,3}-[A-Z]{2}/, lang)
+      );
+    }
+
+    // Wenn Voice bereits mit dem gewünschten Prefix beginnt: unverändert
+    if (voice.startsWith(`${lang}-`)) return voice;
+
+    // Wenn Voice ein ll-CC Prefix hat: ersetze es
+    if (/^[a-z]{2,3}-[A-Z]{2}\b/.test(voice)) {
+      return voice.replace(/^[a-z]{2,3}-[A-Z]{2}/, lang);
+    }
+
+    // Sonst: Prefix voranstellen
+    return `${lang}-${voice}`;
   }
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language?: string; model?: string; speed?: number; voice?: string; pitch?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
-      const voice = extras.voice || GoogleCloudProvider.EXTRA_DEFAULTS.voice;
-      
-      // Extrahiere language code aus voice name (z.B. "en-US-Neural2-C" -> "en-US")
-      let languageCode = extras.language;
-      if (voice && voice.includes("-")) {
-        const voiceParts = voice.split("-");
-        if (voiceParts.length >= 2) {
-          languageCode = `${voiceParts[0]}-${voiceParts[1]}`;
-        }
-      }
-      
-      const pitchSemitones = extras.pitch ?? (languageCode && languageCode.startsWith("ja") ? 10.0 : 0.0);
+
+      // Sprachcode kommt *vom Command* bzw. aus extras.language, nicht aus voice!
+      const languageCode =
+        (extras.language && GoogleCloudProvider.isLanguageTag(extras.language) ? extras.language : undefined) ||
+        GoogleCloudProvider.EXTRA_DEFAULTS.language;
+
+      // Stimme an den Sprachcode anpassen
+      const voice = GoogleCloudProvider.normalizeVoiceForLanguage(languageCode, extras.voice);
+
+      // Optional: sprachspezifischer Default-Pitch (dein Ja-Boost bleibt erhalten)
+      const pitchSemitones =
+        typeof extras.pitch === "number"
+          ? extras.pitch
+          : languageCode.startsWith("ja")
+          ? 10.0
+          : 0.0;
 
       const request = {
         input: { text: sentence },
         voice: {
-          languageCode: languageCode,
-          name: voice, // z.B. "archernar", "en-US-Neural2-C", etc.
+          languageCode,
+          name: voice,
         },
         audioConfig: {
           audioEncoding: "LINEAR16" as const,
-          speakingRate: extras.speed || 1.0,
+          speakingRate: extras.speed ?? GoogleCloudProvider.EXTRA_DEFAULTS.speed,
           pitch: pitchSemitones,
         },
-        model: model, // "chirp_3_hd" für kostenloses Modell
+        model, // "chirp_3_hd" kostenlos
       };
 
       const [response] = await this.client.synthesizeSpeech(request);
-      
-      // Audio-Daten in einen Stream konvertieren
+
       if (response.audioContent) {
-        // audioContent ist bereits Uint8Array, in Stream konvertieren für discord.js voice
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
-        console.log(`[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
-        
-        // LINEAR16 → OGG Opus konvertieren für HD Audio Quality auf Discord
+        console.log(
+          `[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}" (lang=${languageCode}, voice=${voice})`
+        );
+
         const ffmpegProcess = spawn("ffmpeg", [
-          "-i", "pipe:0",           // Input from stdin (LINEAR16 PCM)
-          "-f", "ogg",              // Output format: OGG
-          "-c:a", "libopus",        // Audio codec: Opus (HD Quality)
-          "-b:a", "192k",           // Bitrate: 192k (HD Quality)
-          "-ar", "48000",           // Sample rate: 48kHz (Discord Standard)
-          "-ac", "2",               // Channels: Stereo
-          "-application", "voip",   // Optimized for voice
-          "pipe:1",                 // Output to stdout
+          "-i", "pipe:0",
+          "-f", "ogg",
+          "-c:a", "libopus",
+          "-b:a", "192k",
+          "-ar", "48000",
+          "-ac", "2",
+          "-application", "voip",
+          "pipe:1",
         ]);
-        
-        ffmpegProcess.stdin.write(audioBuffer);
-        ffmpegProcess.stdin.end();
-        
-        // Error handling for FFmpeg
+
         ffmpegProcess.stderr.on("data", (data) => {
           console.error(`[FFmpeg] ${data}`);
         });
-        
+
+        ffmpegProcess.stdin.write(audioBuffer);
+        ffmpegProcess.stdin.end();
+
+        const usedExtras = {
+          ...extras,
+          language: languageCode,
+          model,
+          voice,
+          pitch: pitchSemitones,
+          speed: extras.speed ?? GoogleCloudProvider.EXTRA_DEFAULTS.speed,
+        };
+
         return [
-          new Payload(ffmpegProcess.stdout, sentence, GoogleCloudProvider.NAME, extras),
+          new Payload(ffmpegProcess.stdout as unknown as Readable, sentence, GoogleCloudProvider.NAME, usedExtras),
         ];
       }
 
@@ -105,9 +159,9 @@ export class GoogleCloudProvider implements TTSService {
   getPlayLogMessage(payload: Payload, guild: Guild) {
     const {
       sentence,
-      extras: { language, model, speed, pitch },
+      extras: { language, model, speed, pitch, voice },
     } = payload;
 
-    return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}) at speed ${speed} pitch ${pitch} in guild ${guild.name}.`;
+    return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}, voice: ${voice}) at speed ${speed} pitch ${pitch} in guild ${guild.name}.`;
   }
 }
