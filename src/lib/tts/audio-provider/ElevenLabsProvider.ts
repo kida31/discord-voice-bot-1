@@ -17,8 +17,8 @@ type ElevenVoiceSettings = {
 const VOICE_BY_LANGUAGE: Record<string, string> = {
   "en-US": "eVItLK1UvXctxuaRV2Oq", // English male voice (qxTFXDYbGcR8GaHSjczg) / English female voice (eVItLK1UvXctxuaRV2Oq) 
   "en": "eVItLK1UvXctxuaRV2Oq",
-  "de-DE": "iOT6jsKiIk65DvYiyAVA", // German voice (iwP1PxYYSTdHA1qXlwFe)
-  "de": "iOT6jsKiIk65DvYiyAVA",
+  "de-DE": "iwP1PxYYSTdHA1qXlwFe", // German voice (iwP1PxYYSTdHA1qXlwFe)
+  "de": "iwP1PxYYSTdHA1qXlwFe",
   "ja-JP": "hMK7c1GPJmptCzI4bQIu",
   "ja": "hMK7c1GPJmptCzI4bQIu",
   "vn-VN": "a3AkyqGG4v8Pg7SWQ0Y3",
