@@ -13,12 +13,11 @@ export class GoogleCloudProvider implements TTSService {
   static NAME = "Google Cloud";
   static FRIENDLY_NAME = "Google Cloud Text-to-Speech Provider";
 
-  static EXTRA_FIELDS = ["language", "model", "speed", "voice"];
+  static EXTRA_FIELDS = ["language", "model", "speed"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
     model: "chirp_3_hd", // "google_cloud_standard" oder "chirp_3_hd" - Matze: Bitte auf "chirp_3_hd" lassen, da kostenlos. Sonnst bin ich arm. :)
     speed: 1.0,
-    voice: "en-US-Neural2-C", // z.B. "archernar" oder andere verfügbare Stimmen
   };
 
   private client: TextToSpeechClient;
@@ -30,17 +29,15 @@ export class GoogleCloudProvider implements TTSService {
 
   async create(
     sentence: string,
-    extras: { language: string; model?: string; speed?: number; voice?: string } = GoogleCloudProvider.EXTRA_DEFAULTS,
+    extras: { language: string; model?: string; speed?: number } = GoogleCloudProvider.EXTRA_DEFAULTS,
   ): Promise<Payload[]> {
     try {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
-      const voice = extras.voice || GoogleCloudProvider.EXTRA_DEFAULTS.voice;
       
       const request = {
         input: { text: sentence },
         voice: {
           languageCode: extras.language,
-          name: voice, // z.B. "archernar", "en-US-Neural2-C", etc.
         },
         audioConfig: {
           audioEncoding: "MP3" as const,
@@ -55,12 +52,12 @@ export class GoogleCloudProvider implements TTSService {
       if (response.audioContent) {
         // audioContent ist bereits Uint8Array, in Stream konvertieren für discord.js voice
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
-        console.lWAV konvertieren mit FFmpeg (Discord.js Voice kann WAV direkt verarbeiten)
+        console.log(`[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
+        
+        // MP3 → WAV konvertieren mit FFmpeg (Discord.js Voice kann WAV direkt verarbeiten)
         const ffmpegProcess = spawn("ffmpeg", [
           "-i", "pipe:0",           // Input from stdin (MP3)
           "-f", "wav",              // Output format: WAV
-          "-i", "pipe:0",           // Input from stdin (MP3)
-          "-f", "s16le",            // Output format: 16-bit signed LE
           "-ar", "48000",           // Sample rate: 48kHz (Discord Standard)
           "-ac", "2",               // Channels: Stereo
           "pipe:1",                 // Output to stdout
