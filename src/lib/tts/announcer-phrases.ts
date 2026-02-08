@@ -14,7 +14,7 @@ export function memberLeftChannel(name: string, language: LanguageCode = "en-US"
       return `${name} 엘리트층을 떠났다`;
     default:
       console.warn("Language code not implemented:", language);
-      return memberLeftChannel(name, "en");
+      return memberLeftChannel(name, "en-US");
   }
 }
 
