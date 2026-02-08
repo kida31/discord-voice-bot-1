@@ -25,8 +25,8 @@ type VoiceStateWithChannel = VoiceState & {
   channel: Exclude<VoiceState["channel"], null>;
 };
 
-const DEFAULT_TEXT_LANG: LanguageCode = "en";
-const DEFAULT_VOICE_LANG: LanguageCode = "en";
+const DEFAULT_TEXT_LANG: LanguageCode = "en-US";
+const DEFAULT_VOICE_LANG: LanguageCode = "en-US";
 
 const baseKey = "tts";
 const guildKey = (guildId: string) => `${baseKey}/${guildId}`;
