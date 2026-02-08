@@ -24,9 +24,9 @@ export class ElevenLabsProvider implements TTSService {
   ] as const;
 
   static EXTRA_DEFAULTS = {
-    language: "de-DE",
-    model: "eleven_turbo_v2_5",          // gute Qualität & niedrige Latenz
-    voiceId: "JBFqnCBsd6RMkjVDRZzb",     // Beispiel-Voice-ID ("George")
+    language: "en-US",
+    model: "eleven_multilingual_v2",          // gute Qualität & niedrige Latenz
+    voiceId: "eVItLK1UvXctxuaRV2Oq",     // Beispiel-Voice-ID ("George")
     stability: 0.5,
     similarityBoost: 0.75,
     style: 0.0,
