@@ -48,7 +48,8 @@ export class GoogleCloudProvider implements TTSService {
       
       // Audio-Daten in einen Stream konvertieren
       if (response.audioContent) {
-        const audioBuffer = Buffer.from(response.audioContent as string, "base64");
+        // audioContent ist bereits Uint8Array, nicht Base64
+        const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
         
         return [
           new Payload(audioBuffer, sentence, GoogleCloudProvider.NAME, extras),
