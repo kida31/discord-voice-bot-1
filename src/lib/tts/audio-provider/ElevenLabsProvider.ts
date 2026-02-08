@@ -3,7 +3,15 @@ import { Readable, PassThrough } from "stream";
 import { spawn } from "child_process";
 import { type TTSService, Payload } from "../tts-stuff";
 
-// import fetch from "node-fetch"; // falls dein Node kein global fetch hat
+// Node 18+ hat global fetch. Falls dein Node älter ist, entkommentiere:
+// import fetch from "node-fetch";
+
+type ElevenVoiceSettings = {
+  stability?: number;
+  similarity_boost?: number;
+  style?: number;
+  use_speaker_boost?: boolean;
+};
 
 export class ElevenLabsProvider implements TTSService {
   static NAME = "ElevenLabs";
@@ -17,13 +25,13 @@ export class ElevenLabsProvider implements TTSService {
 
   static EXTRA_DEFAULTS = {
     language: "de-DE",
-    model: "eleven_turbo_v2_5",
-    voiceId: "JBFqnCBsd6RMkjVDRZzb", // Beispiel-Voice-ID "George"
+    model: "eleven_turbo_v2_5",          // gute Qualität bei niedriger Latenz
+    voiceId: "JBFqnCBsd6RMkjVDRZzb",     // Beispiel-Voice ("George"); nimm deine eigene ID
     stability: 0.5,
     similarityBoost: 0.75,
     style: 0.0,
     speakerBoost: true,
-    // Für Discord-Ziel optimal: 48 kHz Opus
+    // Für Discord-Ziel ideal: Opus 48 kHz -> lässt sich direkt als Ogg/Opus abspielen
     outputFormat: "opus_48000_128",
   };
 
@@ -36,10 +44,11 @@ export class ElevenLabsProvider implements TTSService {
     }
   }
 
+  /** "de-DE" -> "de", "en-US" -> "en" (für multilingual-Modelle optional nützlich) */
   private static toIso639_1(langTag?: string): string | undefined {
     if (!langTag) return undefined;
     const m = langTag.match(/^([a-z]{2,3})-[A-Z]{2}$/);
-    return m ? m[1] : undefined; // 'de-DE' -> 'de'
+    return m ? m[1] : undefined;
   }
 
   async create(
@@ -52,30 +61,40 @@ export class ElevenLabsProvider implements TTSService {
       similarityBoost?: number;
       style?: number;
       speakerBoost?: boolean;
-      outputFormat?: string;
+      outputFormat?: string; // z.B. "opus_48000_128"
     } = ElevenLabsProvider.EXTRA_DEFAULTS
   ): Promise<Payload[]> {
     const model = extras.model || ElevenLabsProvider.EXTRA_DEFAULTS.model;
     const outputFormat = extras.outputFormat || ElevenLabsProvider.EXTRA_DEFAULTS.outputFormat;
+
     const langTag = extras.language || ElevenLabsProvider.EXTRA_DEFAULTS.language;
-    const language_code = ElevenLabsProvider.toIso639_1(langTag); // bei multilingualen Modellen nützlich
+    const language_code = ElevenLabsProvider.toIso639_1(langTag);
     const voiceId = extras.voiceId || ElevenLabsProvider.EXTRA_DEFAULTS.voiceId;
 
-    const voice_settings = {
-      stability: typeof extras.stability === "number" ? extras.stability : ElevenLabsProvider.EXTRA_DEFAULTS.stability,
+    const voice_settings: ElevenVoiceSettings = {
+      stability:
+        typeof extras.stability === "number"
+          ? extras.stability
+          : ElevenLabsProvider.EXTRA_DEFAULTS.stability,
       similarity_boost:
-        typeof extras.similarityBoost === "number" ? extras.similarityBoost : ElevenLabsProvider.EXTRA_DEFAULTS.similarityBoost,
-      style: typeof extras.style === "number" ? extras.style : ElevenLabsProvider.EXTRA_DEFAULTS.style,
+        typeof extras.similarityBoost === "number"
+          ? extras.similarityBoost
+          : ElevenLabsProvider.EXTRA_DEFAULTS.similarityBoost,
+      style:
+        typeof extras.style === "number" ? extras.style : ElevenLabsProvider.EXTRA_DEFAULTS.style,
       use_speaker_boost:
-        typeof extras.speakerBoost === "boolean" ? extras.speakerBoost : ElevenLabsProvider.EXTRA_DEFAULTS.speakerBoost,
+        typeof extras.speakerBoost === "boolean"
+          ? extras.speakerBoost
+          : ElevenLabsProvider.EXTRA_DEFAULTS.speakerBoost,
     };
 
+    // === ElevenLabs REST-API ===
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
     const body = {
       text: sentence,
       model_id: model,
       voice_settings,
-      output_format: outputFormat,      // <- Opus 48 kHz
+      output_format: outputFormat,  // <-- Opus 48 kHz anfordern
       ...(language_code ? { language_code } : {}),
     };
 
@@ -94,35 +113,31 @@ export class ElevenLabsProvider implements TTSService {
       throw new Error(`ElevenLabs TTS failed: HTTP ${res.status} ${res.statusText} ${text}`);
     }
 
-    // === FAST-PATH: Prüfe, ob die Antwort bereits Ogg-Container ist ===
-    // Wir lesen einen kleinen Peek (z. B. 64 KB) aus dem Stream,
-    // suchen nach "OggS" am Anfang und streamen bei Erfolg direkt weiter.
-    const peekSize = 65536;
+    // === Fast-Path: Ist der Stream bereits Ogg/Opus? (Header "OggS") ===
     const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const peekChunks: Uint8Array[] = [];
     let received = 0;
 
-    // lies bis peekSize oder EOF
-    while (received < peekSize) {
+    // Kleiner Peek (z. B. 4..64 KB), um auf "OggS" zu prüfen
+    const peekTarget = 65536;
+    while (received < peekTarget) {
       const { value, done } = await reader.read();
       if (done) break;
       if (value && value.length) {
-        chunks.push(value);
+        peekChunks.push(value);
         received += value.length;
-        if (received >= 4) break; // reicht für "OggS" Check; optional mehr lesen
+        if (received >= 4) break;
       }
     }
 
-    const head = chunks.length ? chunks[0].subarray(0, Math.min(chunks[0].length, 4)) : new Uint8Array(0);
-    const isOgg = head.length >= 4 &&
-      head[0] === 0x4F && head[1] === 0x67 && head[2] === 0x67 && head[3] === 0x53; // "OggS"
+    const first = peekChunks.length ? peekChunks[0] : new Uint8Array(0);
+    const isOgg = first.length >= 4 &&
+      first[0] === 0x4F && first[1] === 0x67 && first[2] === 0x67 && first[3] === 0x53; // "OggS"
 
     if (isOgg) {
-      // Direktes Durchreichen als Ogg/Opus
+      // Direkt als Ogg/Opus an Discord geben (kein FFmpeg)
       const pass = new PassThrough();
-      // bereits gelesene Bytes zurückschieben
-      for (const c of chunks) pass.write(Buffer.from(c));
-      // restlichen Response-Stream weiterpumpen
+      for (const c of peekChunks) pass.write(Buffer.from(c));
       (async () => {
         for (;;) {
           const { value, done } = await reader.read();
@@ -148,19 +163,19 @@ export class ElevenLabsProvider implements TTSService {
       ];
     }
 
-    // === FALLBACK: verlustfreies Remuxing nach Ogg/Opus (ohne Re-Encode) ===
+    // === Fallback: verlustfreies Remuxing nach Ogg/Opus (kein Re-Encode) ===
     const ffmpegArgs = [
       "-i", "pipe:0",
       "-f", "ogg",
-      "-c:a", "copy",   // keine Rekodierung, nur Container-Mux
+      "-c:a", "copy",        // nur Container-Mux
       "-application", "voip",
       "pipe:1",
     ];
     const ffmpeg = spawn("ffmpeg", ffmpegArgs);
     ffmpeg.stderr.on("data", (d) => console.error(`[FFmpeg] ${d}`));
 
-    // schreibe Peek-Chunks + Rest in ffmpeg.stdin
-    for (const c of chunks) ffmpeg.stdin.write(Buffer.from(c));
+    // Peek-Chunks + Rest in ffmpeg.stdin pumpen
+    for (const c of peekChunks) ffmpeg.stdin.write(Buffer.from(c));
     (async () => {
       for (;;) {
         const { value, done } = await reader.read();
@@ -178,7 +193,7 @@ export class ElevenLabsProvider implements TTSService {
       outputFormat,
       container: "ogg",
       codec: "opus",
-      note: "fallback (ffmpeg remux only, no re-encode)",
+      note: "fallback (remux only, no re-encode)",
     };
 
     return [
@@ -187,8 +202,13 @@ export class ElevenLabsProvider implements TTSService {
   }
 
   getPlayLogMessage(payload: Payload, guild: Guild) {
-    const { sentence, extras: { language, model, voiceId, outputFormat, container, codec, note } } = payload;
+    const {
+      sentence,
+      extras: { language, model, voiceId, outputFormat, container, codec, note },
+    } = payload;
+
     return `(ElevenLabs): Saying "${sentence}" with model ${model} (${language}, voiceId: ${voiceId}, ${outputFormat}, ${container}/${codec}${note ? ", " + note : ""}) in guild ${guild.name}.`;
   }
 }
-``
+
+export default ElevenLabsProvider;
