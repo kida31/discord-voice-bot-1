@@ -77,7 +77,7 @@ export class ElevenLabsProvider implements TTSService {
 
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "eleven_multilingual_v2",
+    model: "eleven_turbo_v2_5" //eleven_multilingual_v2",
     voiceId: DEFAULT_VOICE_ID,
     stability: 0.5,
     similarityBoost: 0.75,
