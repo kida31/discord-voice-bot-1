@@ -8,7 +8,7 @@ import {
 import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { VoiceConnectionStatus } from "@discordjs/voice";
-import { GoogleProvider } from "./audio-provider/GoogleProvider";
+import { GoogleCloudProvider } from "./audio-provider/GoogleCloudProvider";
 import { getAlias } from "./member-alias";
 import { memberJoinedChannel, memberLeftChannel } from "./announcer-phrases";
 import type { KeyValueOperations } from "@lib/common/util-types";
@@ -181,7 +181,7 @@ export async function createTTSPlayer(
   channel: VoiceBasedChannel,
 ): Promise<TTSPlayer> {
   const player = new TTSPlayerImpl({
-    tts: new GoogleProvider(),
+    tts: new GoogleCloudProvider(),
   });
 
   if (getGuildVoiceLanguage(guild.id)) {
