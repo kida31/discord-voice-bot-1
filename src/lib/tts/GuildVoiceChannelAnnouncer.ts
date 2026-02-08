@@ -10,7 +10,6 @@ import { TTSPlayerImpl } from "./TTSAudioPlayer";
 import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { VoiceConnectionStatus } from "@discordjs/voice";
 // import { GoogleCloudProvider } from "./audio-provider/GoogleCloudProvider";
-import { sleep } from "../../utils/sleep";
 import { ElevenLabsProvider } from "./audio-provider/ElevenLabsProvider";
 import { getAlias } from "./member-alias";
 import { memberJoinedChannel, memberLeftChannel } from "./announcer-phrases";
@@ -157,7 +156,6 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
     announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
     await announcer?.play(
       memberJoinedChannel(
-        await sleep(500),
         memberName(newState.member!),
         getGuildTextLanguage(newState.guild.id),
       ),
