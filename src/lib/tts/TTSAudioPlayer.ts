@@ -29,7 +29,7 @@ export class TTSPlayerImpl implements TTSPlayer {
   channel: VoiceBasedChannel | undefined;
   connection: VoiceConnection | undefined;
 
-  languageCode: LanguageCode = "en";
+  languageCode: LanguageCode = "en-US";
 
   private queue: FIFOQueue<PayloadWithResource> = new FIFOQueue();
   private subscription: PlayerSubscription | undefined;
