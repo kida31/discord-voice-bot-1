@@ -10,7 +10,7 @@ const languageOptions: { name: string; value: LanguageCode }[] = [
   { name: "Deutsch", value: "de-DE" },
   { name: "English", value: "en" },
   { name: "Japanese", value: "ja-JP" },
-  { name: "Korean", value: "ko-KR" },
+  { name: "Koreanisch", value: "ko-KR" },
   { name: "Vietnamese", value: "vi-VN" },
 ] as const;
 
