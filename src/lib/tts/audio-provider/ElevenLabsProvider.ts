@@ -15,8 +15,8 @@ type ElevenVoiceSettings = {
    ======================================================= */
 
 const VOICE_BY_LANGUAGE: Record<string, string> = {
-  "en-US": "bP8FJDHmWVEgXJDitdQd",
-  "en": "bP8FJDHmWVEgXJDitdQd",
+  "en-US": "iWNf11sz1GrUE4ppxTOL",
+  "en": "iWNf11sz1GrUE4ppxTOL",
   "de-DE": "iwP1PxYYSTdHA1qXlwFe",
   "de": "iwP1PxYYSTdHA1qXlwFe",
   "ja-JP": "hMK7c1GPJmptCzI4bQIu",
@@ -27,7 +27,7 @@ const VOICE_BY_LANGUAGE: Record<string, string> = {
   "ko": "sf8Bpb1IU97NI9BHSMRf",
 };
 
-const DEFAULT_VOICE_ID = "bP8FJDHmWVEgXJDitdQd"; // english voices as default fallback
+const DEFAULT_VOICE_ID = "iWNf11sz1GrUE4ppxTOL"; // english voices as default fallback
 
 function toBaseLang(tag?: string): string | undefined {
   if (!tag) return undefined;
