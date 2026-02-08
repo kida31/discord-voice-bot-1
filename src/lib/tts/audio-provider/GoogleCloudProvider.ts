@@ -36,10 +36,19 @@ export class GoogleCloudProvider implements TTSService {
       const model = extras.model || GoogleCloudProvider.EXTRA_DEFAULTS.model;
       const voice = extras.voice || GoogleCloudProvider.EXTRA_DEFAULTS.voice;
       
+      // Extrahiere language code aus voice name (z.B. "en-US-Neural2-C" -> "en-US")
+      let languageCode = extras.language;
+      if (voice && voice.includes("-")) {
+        const voiceParts = voice.split("-");
+        if (voiceParts.length >= 2) {
+          languageCode = `${voiceParts[0]}-${voiceParts[1]}`;
+        }
+      }
+      
       const request = {
         input: { text: sentence },
         voice: {
-          languageCode: extras.language,
+          languageCode: languageCode,
           name: voice, // z.B. "archernar", "en-US-Neural2-C", etc.
         },
         audioConfig: {
