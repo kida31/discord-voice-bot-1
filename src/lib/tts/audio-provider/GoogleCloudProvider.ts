@@ -11,7 +11,7 @@ export class GoogleCloudProvider implements TTSService {
   static EXTRA_FIELDS = ["language", "model", "speed", "voice", "pitch"];
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "chirp_3_hd", // kostenlos
+    model: "chirp_3_hd", // chirp_3_hd ist bis zu 1 Mio Texttoken kostenlos
     voice: "en-US-Chirp3-HD-Zephyr",
     speed: 1.0,
     pitch: 0.0,
