@@ -2,17 +2,17 @@ import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
 
 // https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
-export type LanguageCode = "en" | "vi-VN" | "de-DE" | "ja-JP" | "ko-KR";
+export type LanguageCode = "en-US" | "vi-VN" | "de-DE" | "ja-JP" | "ko-KR";
 
 const botNickname: Collection<LanguageCode, string> = new Collection();
-botNickname.set("en", "Announcer");
+botNickname.set("en-US", "Announcer");
 botNickname.set("vi-VN", "VTV4 Announcer");
 botNickname.set("de-DE", "BRD Sprecher");
 botNickname.set("ja-JP", "日本語アナウンサー");
 botNickname.set("ko-KR", "아나운서");
 
 export function getNickname(l: LanguageCode): string {
-  return botNickname.get(l) ?? botNickname.get("en")!;
+  return botNickname.get(l) ?? botNickname.get("en-US")!;
 }
 
 export interface TTSPlayer {

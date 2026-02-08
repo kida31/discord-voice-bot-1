@@ -8,7 +8,7 @@ import {
 
 const languageOptions: { name: string; value: LanguageCode }[] = [
   { name: "Deutsch", value: "de-DE" },
-  { name: "English", value: "en" },
+  { name: "English", value: "en-US" },
   { name: "Japanese", value: "ja-JP" },
   { name: "Koreanisch", value: "ko-KR" },
   { name: "Vietnamese", value: "vi-VN" },
