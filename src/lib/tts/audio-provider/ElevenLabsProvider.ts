@@ -29,8 +29,8 @@ export class ElevenLabsProvider implements TTSService {
 
   static EXTRA_DEFAULTS = {
     language: "en-US",
-    model: "eleven_multilingual_v2",          // schnell, gute Qualität
-    voiceId: "eVItLK1UvXctxuaRV2Oq",     // 
+    model: "eleven_turbo_v2_5",          // schnell, gute Qualität
+    voiceId: "JBFqnCBsd6RMkjVDRZzb",     // Beispiel-Voice-ID "George"
     speed: 1.0,
     pitch: 0.0,                          // in Halbtonschritten
     stability: 0.5,
@@ -42,7 +42,7 @@ export class ElevenLabsProvider implements TTSService {
 
   // Optionale Defaults je Sprache (du kannst hier deine eigenen Voice-IDs hinterlegen)
   private static DEFAULT_VOICE_BY_LANG: Record<string, string> = {
-    "en-US": "eVItLK1UvXctxuaRV2Oq", // George
+    "en-US": "JBFqnCBsd6RMkjVDRZzb", // George
     // "de-DE": "<DEINE_DE-VOICE-ID>",
     // ...
   };
