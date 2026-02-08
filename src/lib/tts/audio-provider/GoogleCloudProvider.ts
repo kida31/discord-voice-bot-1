@@ -66,12 +66,15 @@ export class GoogleCloudProvider implements TTSService {
         const audioBuffer = Buffer.from(response.audioContent as Uint8Array);
         console.log(`[GoogleCloud TTS] Audio received: ${audioBuffer.length} bytes for "${sentence}"`);
         
-        // MP3 → WAV konvertieren mit FFmpeg (Discord.js Voice kann WAV direkt verarbeiten)
+        // MP3 → OGG Opus konvertieren für HD Audio Quality auf Discord
         const ffmpegProcess = spawn("ffmpeg", [
           "-i", "pipe:0",           // Input from stdin (MP3)
-          "-f", "wav",              // Output format: WAV
+          "-f", "ogg",              // Output format: OGG
+          "-c:a", "libopus",        // Audio codec: Opus (HD Quality)
+          "-b:a", "192k",           // Bitrate: 192k (HD Quality)
           "-ar", "48000",           // Sample rate: 48kHz (Discord Standard)
           "-ac", "2",               // Channels: Stereo
+          "-application", "voip",   // Optimized for voice
           "pipe:1",                 // Output to stdout
         ]);
         
