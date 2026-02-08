@@ -46,7 +46,7 @@ export class GoogleCloudProvider implements TTSService {
         }
       }
       
-      const pitchSemitones = extras.pitch ?? (languageCode && languageCode.startsWith("ja") ? 6.0 : 0.0);
+      const pitchSemitones = extras.pitch ?? (languageCode && languageCode.startsWith("ja") ? 10.0 : 0.0);
 
       const request = {
         input: { text: sentence },
