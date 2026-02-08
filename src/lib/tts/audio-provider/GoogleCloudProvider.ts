@@ -87,10 +87,10 @@ export class GoogleCloudProvider implements TTSService {
   }
 
   getPlayLogMessage(payload: Payload, guild: Guild) {
-    const {, voice },
+    const {
+      sentence,
+      extras: { language, model, speed },
     } = payload;
-
-    return `(Google Cloud): Saying "${sentence}" with voice ${voice
 
     return `(Google Cloud): Saying "${sentence}" with model ${model} (${language}) at speed ${speed} in guild ${guild.name}.`;
   }
