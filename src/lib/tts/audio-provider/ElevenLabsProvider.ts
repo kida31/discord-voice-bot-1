@@ -25,8 +25,7 @@ const VOICE_BY_LANGUAGE: Record<string, string> = {
   "vn": "a3AkyqGG4v8Pg7SWQ0Y3",
   "ko-KR": "XJ2fW4ybq7HouelYYGcL",
   "ko": "XJ2fW4ybq7HouelYYGcL",
-  "es-ES": "fQV5Nz63N4V4PWc9zMpt", // Brazilian Portuguese voice (ZtXh8n9l7sL1v2m5o3qJ)
-  "es": "fQV5Nz63N4V4PWc9zMpt",
+  "de-CH": "fQV5Nz63N4V4PWc9zMpt", // Brazilian Portuguese voice (ZtXh8n9l7sL1v2m5o3qJ)
 };
 
 const DEFAULT_VOICE_ID = "eVItLK1UvXctxuaRV2Oq"; // english voices as default fallback
