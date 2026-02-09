@@ -17,14 +17,14 @@ type ElevenVoiceSettings = {
 const VOICE_BY_LANGUAGE: Record<string, string> = {
   "en-US": "eVItLK1UvXctxuaRV2Oq", // English male voice (qxTFXDYbGcR8GaHSjczg) / English female voice (eVItLK1UvXctxuaRV2Oq) 
   "en": "eVItLK1UvXctxuaRV2Oq",
-  "de-DE": "iwP1PxYYSTdHA1qXlwFe", // German voice (iwP1PxYYSTdHA1qXlwFe)
-  "de": "iwP1PxYYSTdHA1qXlwFe",
-  "ja-JP": "hMK7c1GPJmptCzI4bQIu",
-  "ja": "hMK7c1GPJmptCzI4bQIu",
+  "de-DE": "xLCJR8xcZX2YjImGFyGw", // German voice (xLCJR8xcZX2YjImGFyGw)
+  "de": "xLCJR8xcZX2YjImGFyGw",
+  "ja-JP": "ngvNHfiCrXLPAHcTrZK1",
+  "ja": "ngvNHfiCrXLPAHcTrZK1",
   "vn-VN": "a3AkyqGG4v8Pg7SWQ0Y3",
   "vn": "a3AkyqGG4v8Pg7SWQ0Y3",
-  "ko-KR": "sf8Bpb1IU97NI9BHSMRf",
-  "ko": "sf8Bpb1IU97NI9BHSMRf",
+  "ko-KR": "XJ2fW4ybq7HouelYYGcL",
+  "ko": "XJ2fW4ybq7HouelYYGcL",
   "es-ES": "iOT6jsKiIk65DvYiyAVA", // Brazilian Portuguese voice (ZtXh8n9l7sL1v2m5o3qJ)
   "es": "iOT6jsKiIk65DvYiyAVA",
 };
