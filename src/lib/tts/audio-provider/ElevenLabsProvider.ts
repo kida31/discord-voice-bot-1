@@ -130,8 +130,8 @@ export class ElevenLabsProvider implements TTSService {
 
     const voice_settings: ElevenVoiceSettings = {
       stability: extras.stability ?? 0.5,
-      similarity_boost: extras.similarityBoost ?? 0.75,
-      style: extras.style ?? 0.0,
+      similarity_boost: extras.similarityBoost ?? 0.8,
+      style: extras.style ?? 0.3,
       use_speaker_boost: extras.speakerBoost ?? true,
     };
 
