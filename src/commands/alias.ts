@@ -7,7 +7,7 @@ import {
 const NAME_OPTION = "name";
 
 import type { ChatInputCommand } from "./type";
-import { setAlias } from "@lib/tts/member-alias";
+import { ALIAS_MAX_LENGTH, setAlias } from "@lib/tts/member-alias";
 const data = new SlashCommandBuilder()
   .setName("alias")
   .setDescription("Set your spoken alias for TTS announcements")
@@ -23,7 +23,10 @@ async function execute(interaction: CommandInteraction): Promise<void> {
   if (!interaction.inGuild() || !interaction.guild) return;
   if (!interaction.member) return;
 
-  const alias = interaction.options.getString(NAME_OPTION, true);
+  const alias = interaction.options
+    .getString(NAME_OPTION, true)
+    .substring(0, ALIAS_MAX_LENGTH);
+
   setAlias(interaction.guildId, interaction.member.user.id, alias);
   await interaction.reply({
     content: `Your TTS alias has been set to \`${alias}\``,

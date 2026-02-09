@@ -1,6 +1,8 @@
 import type { KeyValueOperations } from "@lib/common/util-types";
 import { Collection, Guild, User } from "discord.js";
 
+export const ALIAS_MAX_LENGTH = 64;
+
 interface ConfigOptions {
   persist?: Partial<KeyValueOperations<string, string>>;
 }
@@ -21,6 +23,10 @@ export function setAlias(
   userId: User["id"],
   alias: string,
 ): void {
+  if (alias.length > ALIAS_MAX_LENGTH) {
+    throw new Error("Alias is too long");
+  }
+
   const key = memberAsKey(guildId, userId);
 
   cache.set(key, alias);
