@@ -36,7 +36,7 @@ export function memberJoinedChannel(
     case "ko-KR":      
       return `${name} 채널에 합류했습니다`;
     case "es-ES":
-      return `Lets goooo ${name}`;
+      return `Yooo ${name} lets gooo!`;
     default:
       console.warn("Language code not implemented:", language);
       return memberJoinedChannel(name, "en-US");
