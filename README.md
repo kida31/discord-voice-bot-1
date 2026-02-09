@@ -8,6 +8,7 @@
   - [ ] localization
   - [ ] language options
   - [ ] default name and startup behaviour
+- [ ] TTS Caching dringend implementieren
 
 
 # Features
