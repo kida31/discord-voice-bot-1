@@ -76,8 +76,8 @@ export class ElevenLabsProvider implements TTSService {
     language: "en-US",
     model: "eleven_turbo_v2_5", //alternative "eleven_multilingual_v2" but VN not working with it 
     voiceId: DEFAULT_VOICE_ID,
-    stability: 0.4, // 0.0 (more random) bis 1.0 (more stable)
-    similarityBoost: 0.65, // 0.0 (less similar) bis 1.0 (more similar)
+    stability: 0.5, // 0.0 (more random) bis 1.0 (more stable)
+    similarityBoost: 0.8, // 0.0 (less similar) bis 1.0 (more similar)
     style: 0.3, // 0.0 (neutral) bis 1.0 (more style, e.g. emotional)
     speakerBoost: true,
     outputFormat: "opus_48000_128",
