@@ -12,6 +12,7 @@ const languageOptions: { name: string; value: LanguageCode }[] = [
   { name: "Japanese", value: "ja-JP" },
   { name: "Koreanisch", value: "ko-KR" },
   { name: "Vietnamese", value: "vi-VN" },
+  { name: "Oliver", value: "br-BR" },
 ] as const;
 
 const data = new SlashCommandBuilder()
