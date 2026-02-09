@@ -12,7 +12,7 @@ export function memberLeftChannel(name: string, language: LanguageCode = "en-US"
       return `${name} チャンネルを離れました`;
     case "ko-KR":
       return `${name} 엘리트층을 떠났다`;
-    case "br-BR":
+    case "es-ES":
       return `${name} der Verräter ist gegangen.`;
     default:
       console.warn("Language code not implemented:", language);
@@ -35,7 +35,7 @@ export function memberJoinedChannel(
       return `${name} チャンネルに参加しました。`;
     case "ko-KR":      
       return `${name} 채널에 합류했습니다`;
-    case "br-BR":
+    case "es-ES":
       return `Lets goooo ${name}`;
     default:
       console.warn("Language code not implemented:", language);
