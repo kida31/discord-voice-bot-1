@@ -10,7 +10,7 @@ import type { LanguageCode, TTSPlayer } from "./tts-stuff";
 import { VoiceConnectionStatus } from "@discordjs/voice";
 // import { GoogleCloudProvider } from "./audio-provider/GoogleCloudProvider";
 import { ElevenLabsProvider } from "./audio-provider/ElevenLabsProvider";
-import { getAlias } from "./member-alias";
+import { ALIAS_MAX_LENGTH, getAlias } from "./member-alias";
 import { memberJoinedChannel, memberLeftChannel } from "./announcer-phrases";
 import type { KeyValueOperations } from "@lib/common/util-types";
 import { PersistedMap } from "@lib/persist/PersistedMap";
@@ -260,5 +260,5 @@ function memberName(member: GuildMember): string {
     member.nickname ??
     member.user.displayName ??
     "User"
-  );
+  ).substring(0, ALIAS_MAX_LENGTH); // Verify against max length, just in case
 }
