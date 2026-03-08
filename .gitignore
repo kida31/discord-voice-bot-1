@@ -137,3 +137,4 @@ dist
 
 # I dont know what I do
 package-lock.json
+/.idea
