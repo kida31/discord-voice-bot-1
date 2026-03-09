@@ -77,7 +77,7 @@ export class GoogleCloudProvider implements TTSProvider {
         return `${lang}-${voice}`;
     }
 
-    async toSpeech(
+    async createAudio(
         sentence: string,
         extras: {
             language?: string;

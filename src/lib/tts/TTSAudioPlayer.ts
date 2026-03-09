@@ -114,7 +114,7 @@ export class TTSPlayerImpl implements TTSPlayer {
             console.error("TTS Player not connected to a guild/channel");
             return;
         }
-        const payloads = await this.tts.toSpeech(text);
+        const payloads = await this.tts.createAudio(text);
 
         for (const payload of payloads) {
             // payload.resource ist ein Readable-Stream

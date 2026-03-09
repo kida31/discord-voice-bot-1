@@ -74,7 +74,7 @@ export class ElevenLabsProvider implements TTSProvider {
         return id3 || frameSync;
     }
 
-    async toSpeech(
+    async createAudio(
         sentence: string,
         extras = ElevenLabsProvider.EXTRA_DEFAULTS
     ): Promise<Payload[]> {
