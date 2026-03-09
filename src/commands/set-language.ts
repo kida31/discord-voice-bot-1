@@ -19,12 +19,15 @@ const languageOptions: { name: string; value: TextLanguageKey }[] = SUPPORTED_TE
 
 const data = new SlashCommandBuilder()
     .setName("language")
-    .setDescription("Set language for TTS announcer")
-
+    .setNameLocalization("de", "sprache")
+    .setDescription("Set text language for TTS announcer")
+    .setDescriptionLocalization("de", "Textsprache für TTS-Ansager festlegen.")
     .addStringOption((option) =>
         option
             .setName("lang")
+            .setNameLocalization("de", "sprache")
             .setDescription("Language")
+            .setDescriptionLocalization("de", "Sprache")
             .setRequired(true)
             .addChoices(...languageOptions),
     );

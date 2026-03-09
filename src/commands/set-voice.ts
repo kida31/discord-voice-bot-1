@@ -12,12 +12,11 @@ import {langBySubtag, type Subtag} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 import {getLanguageNickname, getVoiceNickname} from "@lib/tts/bot-nickname";
 
-const LANG_TAG_OPTION_NAME = "tag";
-const VOICE_ID_OPTION_NAME = "voicemodel";
+const SUBCOMMAND_LANGCODE = "tag";
+const LANG_TAG_OPTION_NAME = "langtag";
 
-const SUBCOMMAND_LANGCODE = "languagecode";
 const SUBCOMMAND_ELEVENLABS = "elevenlabs";
-
+const VOICE_ID_OPTION_NAME = "voicemodel";
 
 const defaultLangTagOptions = ['en', 'de', 'ja', 'vi', 'ko'] as const satisfies SupportedLanguageKey[];
 
@@ -35,11 +34,15 @@ const voiceOptions = Object.values(VOICES)
 
 const data = new SlashCommandBuilder()
     .setName("voice")
+    .setNameLocalization("de", "stimme")
     .setDescription("Set voice for TTS player.")
+    .setDescriptionLocalization("de", "Stimme für TTS-Ansager festlegen.")
     .addSubcommand(sc =>
         sc
             .setName(SUBCOMMAND_LANGCODE)
+            .setNameLocalization("de", "kürzel")
             .setDescription("Set voice by common language tag.")
+            .setDescriptionLocalization("de", "Stimme anhand eines Sprachkürzels festlegen.")
             .addStringOption(opt =>
                 opt
                     .setName(LANG_TAG_OPTION_NAME)
@@ -51,6 +54,7 @@ const data = new SlashCommandBuilder()
         sc
             .setName(SUBCOMMAND_ELEVENLABS)
             .setDescription("Set voice model for ElevenLabs. This overrides the language tag setting, if any.")
+            .setDescriptionLocalization("de", "Stimme anhand eines ElevenLabs-Stimmenmodells festlegen. Überschreibt die Sprachkürzel-Einstellung.")
             .addStringOption(opt =>
                 opt
                     .setName(VOICE_ID_OPTION_NAME)

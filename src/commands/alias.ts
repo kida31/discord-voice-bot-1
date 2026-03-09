@@ -7,6 +7,7 @@ const NAME_OPTION = "name";
 const data = new SlashCommandBuilder()
     .setName("alias")
     .setDescription("Set your spoken alias for TTS announcements")
+    .setDescriptionLocalization("de", "Lege deinen gesprochenen Alias für TTS-Ansagen fest")
     .addStringOption((option) =>
         option
             .setName(NAME_OPTION)
