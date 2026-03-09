@@ -13,14 +13,14 @@ function getDb() {
     if (!DB_FILE_NAME) throw new Error("Missing database file");
     const db = new Database(DB_FILE_NAME, options);
     db.pragma("journal_mode = WAL");
-    console.log("Initialized database");
+
     cachedDatabase = db;
-    db.prepare(
+    const result = db.prepare(
         "CREATE TABLE IF NOT EXISTS " +
         TABLE_NAME +
         "(key TEXT PRIMARY KEY ASC, value TEXT)",
-    )
-        .run();
+    ).run();
+    if (result.changes) console.log("Initialized database");
 
     return cachedDatabase;
 }
@@ -30,29 +30,14 @@ export function storeValue(key: string, value: string | null): void {
         throw new Error("Invalid key" + key);
     }
     const db = getDb();
-    db.prepare(`REPLACE
-    INTO
-    ${TABLE_NAME}
-    (
-    key,
-    value
-    )
-    VALUES
-    (
-    ?,
-    ?
-    )`).run(
-        key,
-        value,
-    );
+    db.prepare("REPLACE INTO ${TABLE_NAME} (key, value) VALUES(?, ? )")
+        .run(key, value,);
 }
 
 export function getValue(key: string): string | undefined {
     const db = getDb();
     const res = db
-        .prepare(`SELECT *
-                  FROM ${TABLE_NAME}
-                  WHERE key =?;`)
+        .prepare("SELECT * FROM ${TABLE_NAME} WHERE key =?;")
         .get(key) as TableData | undefined;
     return res?.value;
 }
