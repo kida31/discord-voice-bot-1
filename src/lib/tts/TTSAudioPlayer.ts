@@ -17,7 +17,8 @@ import {
 import { type Guild, type VoiceBasedChannel } from "discord.js";
 import { Readable } from "stream";
 import { FIFOQueue } from "../common/FIFOQueue";
-import type { LanguageCode, Payload, TTSPlayer, TTSService } from "./tts-stuff";
+import type { Payload, TTSPlayer, TTSService } from "./tts-stuff";
+import type {LanguageKey} from "@lib/tts/localization/lang";
 
 type PayloadWithResource = {
   payload: Payload;
@@ -32,7 +33,7 @@ export class TTSPlayerImpl implements TTSPlayer {
   channel: VoiceBasedChannel | undefined;
   connection: VoiceConnection | undefined;
 
-  languageCode: LanguageCode = "en-US";
+  languageCode: LanguageKey = "en";
 
   private queue: FIFOQueue<PayloadWithResource> = new FIFOQueue();
   private subscription: PlayerSubscription | undefined;
@@ -47,13 +48,13 @@ export class TTSPlayerImpl implements TTSPlayer {
     })
       .on(AudioPlayerStatus.Idle, () => {
         const next = this.queue.dequeue();
-        if (!!next) this.player.play(next.resource);
+        if (next) this.player.play(next.resource);
       })
       .on("error", (err) => {
         console.error("[AudioPlayer] error:", err);
         // optional: nächstes Element spielen, um nicht zu hängen
         const next = this.queue.dequeue();
-        if (!!next) this.player.play(next.resource);
+        if (next) this.player.play(next.resource);
       });
 
     this.tts = tts!;
@@ -177,4 +178,3 @@ export class TTSPlayerImpl implements TTSPlayer {
     this.player.stop();
   }
 }
-``

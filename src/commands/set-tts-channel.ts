@@ -1,6 +1,5 @@
 import { setReadChannel } from "@lib/tts/tts-channel";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-import { channel } from "node:diagnostics_channel";
 
 export default {
   data: new SlashCommandBuilder()

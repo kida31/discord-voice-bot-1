@@ -1,6 +1,6 @@
 import {Collection, type Guild, GuildMember, type VoiceBasedChannel, VoiceState,} from "discord.js";
 import {TTSPlayerImpl} from "./TTSAudioPlayer";
-import type {LanguageCode, TTSPlayer} from "./tts-stuff";
+import type {TTSPlayer} from "./tts-stuff";
 import {VoiceConnectionStatus} from "@discordjs/voice";
 // import { GoogleCloudProvider } from "./audio-provider/GoogleCloudProvider";
 import {ALIAS_MAX_LENGTH, getAlias} from "./member-alias";
@@ -22,7 +22,7 @@ type VoiceStateWithChannel = VoiceState & {
 };
 
 const DEFAULT_TEXT_LANG: LanguageKey = "en";
-const DEFAULT_VOICE_LANG: LanguageCode = "en-US";
+const DEFAULT_VOICE_LANG: LanguageKey = "en";
 
 const baseKey = "tts";
 const guildKey = (guildId: string) => `${baseKey}/${guildId}`;
@@ -39,7 +39,7 @@ export function configureGVCAnnouncer(options: {
         toStringValue: (l) => l,
     });
 
-    _guildVoiceLanguageMap = new PersistedMap<Guild["id"], LanguageCode>({
+    _guildVoiceLanguageMap = new PersistedMap<Guild["id"], LanguageKey>({
         persistance: options.persist.voice,
         toStringKey: (guildId: string) => `${guildKey(guildId)}/voice/lang`,
         toStringValue: (l) => l,
@@ -208,14 +208,14 @@ function announcerIsOnChannel(channel: VoiceBasedChannel) {
     return announcer.channel?.id == channel.id;
 }
 
-let _guildVoiceLanguageMap: KeyValueOperations<Guild["id"], LanguageCode> =
+let _guildVoiceLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
     new Map();
 let _guildTextLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
     new Map();
 
 export function setGuildVoiceLanguage(
     guildId: Guild["id"],
-    l: LanguageCode,
+    l: LanguageKey,
 ): void {
     _guildVoiceLanguageMap.set(guildId, l);
 
@@ -225,7 +225,7 @@ export function setGuildVoiceLanguage(
     }
 }
 
-export function getGuildVoiceLanguage(guildId: Guild["id"]): LanguageCode {
+export function getGuildVoiceLanguage(guildId: Guild["id"]): LanguageKey {
     return _guildVoiceLanguageMap.get(guildId) ?? DEFAULT_VOICE_LANG;
 }
 

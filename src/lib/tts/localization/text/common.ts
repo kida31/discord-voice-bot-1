@@ -1,7 +1,8 @@
-/** If this file gets too long, split languages in own files */
-
-
-import type {TemplateMapping} from "@lib/tts/localization/text/type";
+/**
+ * If this file gets too long, split languages in own files.
+ * If possible export files as json for runtime flexibility
+ * */
+import type {TemplateMapping} from "@lib/tts/localization/text/template";
 
 export const en = {
     join: "{0} joined the voice channel",
@@ -41,3 +42,11 @@ export const ja = {
     muted: "{0} 自分でミュートしました。",
     unmuted: "{0} 自分でミュートを解除しました。",
 } satisfies Partial<TemplateMapping>;
+
+export default {
+    en,
+    de,
+    vi,
+    ko,
+    ja,
+}

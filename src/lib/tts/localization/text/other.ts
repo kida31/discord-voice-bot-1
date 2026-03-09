@@ -1,5 +1,5 @@
 import {de} from "@lib/tts/localization/text/common";
-import type {TemplateMapping} from "@lib/tts/localization/text/type";
+import type {TemplateMapping} from "@lib/tts/localization/text/template";
 
 export const alpha = {
     join: "{0} is locked in for real",
@@ -15,3 +15,9 @@ export const de2 = {
     join: "{0} ist jetzt am Start.",
     leave: "{0} hat den Squad verlassen.",
 } satisfies Partial<TemplateMapping>;
+
+export default {
+    alpha,
+    oliver,
+    de2,
+}
