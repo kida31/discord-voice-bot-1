@@ -6,9 +6,10 @@ import {VoiceConnectionStatus} from "@discordjs/voice";
 import {ALIAS_MAX_LENGTH, getAlias} from "./member-alias";
 import type {KeyValueOperations} from "@lib/common/util-types";
 import {PersistedMap} from "@lib/persist/PersistedMap";
-import {GoogleProvider} from "@lib/tts/audio-provider/GoogleProvider";
 import type {LanguageKey} from "@lib/tts/localization/lang";
 import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";
+import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {GoogleTranslateTTS} from "@lib/tts/audio-provider";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -168,7 +169,7 @@ export async function createTTSPlayer(
     channel: VoiceBasedChannel,
 ): Promise<TTSPlayer> {
     const player = new TTSPlayerImpl({
-        tts: new GoogleProvider(),
+        tts: new GoogleTranslateTTS(),
     });
 
     if (getGuildVoiceLanguage(guild.id)) {
@@ -211,6 +212,8 @@ function announcerIsOnChannel(channel: VoiceBasedChannel) {
 let _guildVoiceLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
     new Map();
 let _guildTextLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
+    new Map();
+let _guildVoiceIdMap: KeyValueOperations<Guild["id"], VoiceId> =
     new Map();
 
 export function setGuildVoiceLanguage(

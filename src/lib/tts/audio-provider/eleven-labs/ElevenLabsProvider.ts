@@ -1,7 +1,7 @@
 import type { Guild } from "discord.js";
 import { Readable, PassThrough } from "stream";
 import { spawn } from "child_process";
-import { type TTSService, Payload } from "../tts-stuff";
+import { type TTSService, Payload } from "../../tts-stuff";
 
 type ElevenVoiceSettings = {
   stability?: number;
