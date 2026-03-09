@@ -4,7 +4,7 @@ import type {TTSPlayer} from "./tts-stuff";
 import {VoiceConnectionStatus} from "@discordjs/voice";
 import {langByKey, type LanguageKey} from "@lib/tts/localization/lang";
 import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";
-import {byId} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {voiceById} from "@lib/tts/audio-provider/eleven-labs/voices";
 import {ElevenLabsProvider, GoogleTranslateTTS} from "@lib/tts/audio-provider";
 import {type GuildAnnouncerConfig, GuildAnnouncerConfigRepository} from "@lib/persist/GuildAnnouncerConfigRepository";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
@@ -136,8 +136,9 @@ async function onMemberChangedChannel(
 }
 
 function createTTSProvider(config: GuildAnnouncerConfig) {
+    console.log("Creating TTS provider with config", config);
     if (config.elevenLabsVoiceId) {
-        const voice = byId(config.elevenLabsVoiceId);
+        const voice = voiceById(config.elevenLabsVoiceId);
         const language = langByKey(config.voiceLanguage);
 
         const compatibleLanguages = voice.compatibleLanguages ?? [];
@@ -202,6 +203,7 @@ export async function updateTTSPlayer(guild: Guild) {
     destroyTTSPlayer(guild);
     await createTTSPlayer(guild, channel);
 }
+
 function announcerIsOnChannel(channel: VoiceBasedChannel) {
     const announcer = getAnnouncer(channel.guildId);
     if (!announcer) return false;

@@ -1,2 +1,2 @@
-export {byName, byId} from "./voices";
+export {voiceByName, voiceById} from "./voices";
 export {ElevenLabsProvider} from "./ElevenLabsProvider";

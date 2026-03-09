@@ -27,6 +27,7 @@ export class GuildAnnouncerConfigRepository {
     setConfig(config: GuildAnnouncerConfig) {
         const key = makeKey(config.guildId);
         const json = JSON.stringify(config);
+        console.log("Setting config for guild ${config.guildId}:", config);
         storeValue(key, json);
     }
 
@@ -38,6 +39,7 @@ export class GuildAnnouncerConfigRepository {
         if (existingConfig) {
             const updatedConfig = {...existingConfig, ...updates};
             const updatedJson = JSON.stringify(updatedConfig);
+            console.log(`Updating config for guild ${guildId}:`, updatedConfig);
             storeValue(key, updatedJson);
         } else {
             if (!updates.voiceLanguage || !updates.textLanguage || updates.aliases == null) {

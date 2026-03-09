@@ -6,7 +6,7 @@ import {
     setGuildVoiceModel,
     updateTTSPlayer,
 } from "@lib/tts/GuildVoiceChannelAnnouncer";
-import {byId as voiceById, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {voiceById, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {SupportedLanguageKey} from "@lib/tts/localization/voice";
 import {langBySubtag, type Subtag} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
@@ -31,7 +31,6 @@ const langTagOptions = defaultLangTagOptions.map(tag => {
 
 const voiceOptions = Object.values(VOICES)
     .map(v => ({name: v.name, value: v.id}));
-
 
 
 const data = new SlashCommandBuilder()

@@ -31,12 +31,6 @@ export const VOICES = {
         compatibleLanguages: ["ko"],
         description: "Korean",
     },
-    "german_swiss": {
-        id: "fQV5Nz63N4V4PWc9zMpt" as VoiceId,
-        name: "Ballerina Cappuccina",
-        compatibleLanguages: ["de"],
-        description: "..."
-    },
     "oliver": {
         id: "fQV5Nz63N4V4PWc9zMpt" as VoiceId,
         name: "Oliver",
@@ -58,11 +52,11 @@ for (const voice of Object.values(VOICES)) {
     }
 }
 
-export function byName(name: string): Voice | undefined {
+export function voiceByName(name: string): Voice | undefined {
     return Object.values(VOICES).find(v => v.name === name);
 }
 
-export function byId(id: VoiceId): Voice {
+export function voiceById(id: VoiceId): Voice {
     return Object.values(VOICES).find(v => v.id === id)!;
 }
 
