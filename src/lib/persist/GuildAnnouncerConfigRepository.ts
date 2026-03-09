@@ -21,25 +21,27 @@ export class GuildAnnouncerConfigRepository {
     getConfig(guildId: Guild["id"]): GuildAnnouncerConfig {
         const key = makeKey(guildId);
         const json = getValue(key);
-        return json ? JSON.parse(json) as GuildAnnouncerConfig : {guildId, ...DEFAULT_CONFIG};
+        if (!json) {
+            return {...DEFAULT_CONFIG, guildId};
+        } else {
+            return JSON.parse(json) as GuildAnnouncerConfig;
+        }
     }
 
     setConfig(config: GuildAnnouncerConfig) {
         const key = makeKey(config.guildId);
         const json = JSON.stringify(config);
-        console.log("Setting config for guild ${config.guildId}:", config);
         storeValue(key, json);
     }
 
     updateConfig(updates: Partial<GuildAnnouncerConfig> & Pick<GuildAnnouncerConfig, "guildId">) {
         const guildId = updates.guildId;
-        const key = makeKey(guildId);
-        const existingConfig = this.getConfig(key);
+        const existingConfig = this.getConfig(guildId);
 
         if (existingConfig) {
+            const key = makeKey(guildId);
             const updatedConfig = {...existingConfig, ...updates};
             const updatedJson = JSON.stringify(updatedConfig);
-            console.log(`Updating config for guild ${guildId}:`, updatedConfig);
             storeValue(key, updatedJson);
         } else {
             if (!updates.voiceLanguage || !updates.textLanguage || updates.aliases == null) {
