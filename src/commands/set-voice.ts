@@ -1,33 +1,38 @@
 import {CommandInteraction, SlashCommandBuilder} from "discord.js";
 import type {ChatInputCommand} from "./type";
-import {setGuildVoiceLanguage,} from "@lib/tts/GuildVoiceChannelAnnouncer";
+import {setGuildVoiceLanguage, setGuildVoiceModel,} from "@lib/tts/GuildVoiceChannelAnnouncer";
 import {byId as voiceById, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {SupportedLanguageKey} from "@lib/tts/localization/voice";
-import {bySubtag, type Subtag} from "@lib/tts/localization/lang";
+import {langBySubtag, type Subtag} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
+import {getLanguageNickname, getVoiceNickname} from "@lib/tts/bot-nickname";
 
 const defaultLangTagOptions = ['en', 'de', 'ja', 'vi', 'ko'] as const satisfies SupportedLanguageKey[];
 
 const langTagOptions = defaultLangTagOptions.map(tag => {
-    const l = bySubtag(tag);
+    const l = langBySubtag(tag);
     return {
         name: l.name == l.en_name ? l.name : `${l.name} (${l.en_name})`,
         value: tag,
     }
 });
 
-const voiceOptions = VOICES.map(v => ({name: v.name, value: v.id}));
+const voiceOptions = Object.values(VOICES)
+    .map(v => ({name: v.name, value: v.id}));
+
+const LANG_TAG_OPTION_NAME = "tag";
+const VOICE_ID_OPTION_NAME = "voicemodel";
 
 const data = new SlashCommandBuilder()
     .setName("voice")
     .setDescription("Set voice for TTS player.")
     .addSubcommand(sc =>
         sc
-            .setName("tag")
+            .setName("language")
             .setDescription("Set voice by common language tag.")
             .addStringOption(opt =>
                 opt
-                    .setName("langtag")
+                    .setName(LANG_TAG_OPTION_NAME)
                     .setDescription("Common language tag")
                     .setRequired(true)
                     .addChoices(...langTagOptions))
@@ -35,10 +40,10 @@ const data = new SlashCommandBuilder()
     .addSubcommand(sc =>
         sc
             .setName('elevenlabs')
-            .setDescription("Set voice by ElevenLabs voice key.")
+            .setDescription("Set voice model for ElevenLabs. This overrides the language tag setting, if any.")
             .addStringOption(opt =>
                 opt
-                    .setName("voiceid")
+                    .setName(VOICE_ID_OPTION_NAME)
                     .setDescription("ElevenLabs voice key")
                     .setRequired(true)
                     .addChoices(...voiceOptions))
@@ -51,31 +56,32 @@ async function execute(interaction: CommandInteraction): Promise<void> {
     const subcommand = interaction.options.getSubcommand(true);
 
     if (subcommand === "tag") {
-        const langtag = interaction.options.getString("langtag", true) as Subtag;
-        const lang = bySubtag(langtag);
+        const langtag = interaction.options.getString(LANG_TAG_OPTION_NAME, true) as Subtag;
+        const language = langBySubtag(langtag);
 
-        setGuildVoiceLanguage(interaction.guildId, lang.subtag);
+        setGuildVoiceLanguage(interaction.guildId, language.subtag);
 
-        // {
-        //     const name = getNickname(langTag);
-        //     console.log("Trying to set nickname to...", name);
-        //     await interaction.guild?.members.me?.setNickname(name);
-        // }
+        {
+            const name = getLanguageNickname(language.subtag);
+            console.log("Trying to set nickname to...", name);
+            await interaction.guild?.members.me?.setNickname(name);
+        }
 
         await interaction.reply({
-            content: `Voice set to: **${lang.name} (${lang.en_name})**`,
+            content: `Voice set to: **${language.name} (${language.en_name})**`,
         });
     } else if (subcommand === "elevenlabs") {
-        const voiceId = interaction.options.getString("voiceid", true) as VoiceId;
+        const voiceId = interaction.options.getString(VOICE_ID_OPTION_NAME, true) as VoiceId;
         console.log("Selected voice ID:", voiceId);
         const voice = voiceById(voiceId);
-        // setGuildVoiceLanguage(interaction.guildId, voiceId);
 
-        // {
-        //     const name = getNickname(voiceId );
-        //     console.log("Trying to set nickname to...", name);
-        //     await interaction.guild?.members.me?.setNickname(name);
-        // }
+        setGuildVoiceModel(interaction.guildId, voice.id);
+
+        {
+            const name = getVoiceNickname(voice);
+            console.log("Trying to set nickname to...", name);
+            await interaction.guild?.members.me?.setNickname(name);
+        }
 
         await interaction.reply({
             content: `Voice set to: **${voice.name}**`,

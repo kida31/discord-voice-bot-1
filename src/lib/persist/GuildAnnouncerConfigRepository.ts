@@ -4,9 +4,10 @@ import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 import type {Guild, User} from "discord.js";
 import {deleteValue, getValue, storeValue} from "@lib/persist/key-value-store";
 
-/** This class represents the configuration for the guild announcer. */
-
-/* Make sure all values extend string */
+/**
+ * This class represents the configuration for the guild announcer.
+ * Make sure all values extend string
+ */
 export interface GuildAnnouncerConfig {
     guildId: string;
     voiceLanguage: LanguageKey;
@@ -15,32 +16,23 @@ export interface GuildAnnouncerConfig {
     aliases: { [key: User["id"]]: string };
 }
 
-const DEFAULT_CONFIG: Omit<GuildAnnouncerConfig, "guildId"> = {
-    voiceLanguage: "en",
-    textLanguage: "en",
-    elevenLabsVoiceId: null,
-    aliases: {},
-};
-
-const baseItemKey = "tts/guild-announcer-config";
-const itemKey = (guildId: string) => `${baseItemKey}/${guildId}`;
-
+/** This repository provides methods to get, set, update, and delete the guild announcer configuration. */
 export class GuildAnnouncerConfigRepository {
     getConfig(guildId: Guild["id"]): GuildAnnouncerConfig {
-        const key = itemKey(guildId);
+        const key = makeKey(guildId);
         const json = getValue(key);
         return json ? JSON.parse(json) as GuildAnnouncerConfig : {guildId, ...DEFAULT_CONFIG};
     }
 
     setConfig(config: GuildAnnouncerConfig) {
-        const key = itemKey(config.guildId);
+        const key = makeKey(config.guildId);
         const json = JSON.stringify(config);
         storeValue(key, json);
     }
 
     updateConfig(updates: Partial<GuildAnnouncerConfig> & Pick<GuildAnnouncerConfig, "guildId">) {
         const guildId = updates.guildId;
-        const key = itemKey(guildId);
+        const key = makeKey(guildId);
         const existingJson = getValue(key);
         const existingConfig = existingJson ? JSON.parse(existingJson) as GuildAnnouncerConfig : undefined;
 
@@ -61,7 +53,18 @@ export class GuildAnnouncerConfigRepository {
     }
 
     deleteConfig(guildId: Guild["id"]) {
-        const key = itemKey(guildId);
+        const key = makeKey(guildId);
         deleteValue(key);
     }
 }
+
+
+const DEFAULT_CONFIG: Omit<GuildAnnouncerConfig, "guildId"> = {
+    voiceLanguage: "en",
+    textLanguage: "en",
+    elevenLabsVoiceId: null,
+    aliases: {},
+};
+
+const baseKey = "tts/guild-announcer-config";
+const makeKey = (guildId: string) => `${baseKey}/${guildId}`;

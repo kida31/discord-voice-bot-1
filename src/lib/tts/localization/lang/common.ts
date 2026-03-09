@@ -1,5 +1,7 @@
 import {type Info} from "@lib/tts/localization/lang/index";
 
+export type CommonLanguage = Info & { subtag: string; }
+
 export const common = {
     "af": {
         "en_name": "Afrikaans",
@@ -666,7 +668,7 @@ export const common = {
         "name": "isiZulu",
         "subtag": "zu"
     }
-} as const satisfies { [key: string]: Info & Required<Pick<Info, "subtag">> };
+} as const satisfies { [key: string]: CommonLanguage };
 
 export type Subtag = typeof common[keyof typeof common]["subtag"];
 /** Tag-Subtag-Region codes according to convention BCP47 */

@@ -2,9 +2,9 @@ import type {Guild} from "discord.js";
 import {PassThrough, Readable} from "stream";
 import {spawn} from "child_process";
 import {Payload} from "../../tts-stuff";
-import type {BCP47, LanguageKey} from "@lib/tts/localization/lang";
+import type {BCP47} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
-import {VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
+import { VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {TTSProvider} from "@lib/tts/audio-provider";
 
 type ElevenVoiceSettings = {
@@ -14,7 +14,7 @@ type ElevenVoiceSettings = {
     use_speaker_boost?: boolean;
 };
 
-const DEFAULT_VOICE_ID = VOICES[0].id; // english voices as default fallback
+const DEFAULT_VOICE_ID = VOICES.english_female.id; // english voices as default fallback
 
 /* ============================================================== */
 
@@ -45,7 +45,7 @@ export class ElevenLabsProvider implements TTSProvider {
 
     constructor(config?: {
         apiKey?: string;
-        language_code?: LanguageKey
+        language_code?: BCP47
         voiceId?: VoiceId;
     }) {
         this.apiKey = config?.apiKey ?? process.env["ELEVENLABS_API_KEY"] ?? "";

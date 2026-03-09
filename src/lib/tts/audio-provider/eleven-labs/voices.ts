@@ -1,59 +1,71 @@
 import type {Voice, VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 
-export const VOICES = [
-    {
+export const VOICES = {
+    "english_female": {
         id: "eVItLK1UvXctxuaRV2Oq" as VoiceId,
         name: "English Female",
         compatibleLanguages: ["en"],
+        description: "English Female",
     } /* as const */,
-    {
+    "german": {
         id: "xLCJR8xcZX2YjImGFyGw" as VoiceId,
-        name: "German",
+        name: "BRD Sprecher",
         compatibleLanguages: ["de"],
+        description: "German",
     },
-    {
+    "japanese": {
         id: "ngvNHfiCrXLPAHcTrZK1" as VoiceId,
-        name: "Japanese",
+        name: "日本語アナウンサー",
         compatibleLanguages: ["ja"],
+        description: "Japanese",
     },
-    {
+    "vietnamese": {
         id: "a3AkyqGG4v8Pg7SWQ0Y3" as VoiceId,
-        name: "Vietnamese",
+        name: "VTV4",
         compatibleLanguages: ["vi"],
+        description: "Vietnamese",
     },
-    {
+    "korean": {
         id: "XJ2fW4ybq7HouelYYGcL" as VoiceId,
-        name: "Korean",
+        name: "아나운서",
         compatibleLanguages: ["ko"],
+        description: "Korean",
     },
-    {
+    "german_swiss": {
         id: "fQV5Nz63N4V4PWc9zMpt" as VoiceId,
-        name: "German (Swiss, not really)",
+        name: "Ballerina Cappuccina",
         compatibleLanguages: ["de"],
+        description: "..."
     },
-    {
+    "oliver": {
         id: "fQV5Nz63N4V4PWc9zMpt" as VoiceId,
         name: "Oliver",
         compatibleLanguages: ["de"],
+        description: "Der Allerbeste"
     },
-    {
-        name: "???Brazilian Portuguese???",
+    "pt": {
         id: "ZtXh8n9l7sL1v2m5o3qJ" as VoiceId,
+        name: "???",
         compatibleLanguages: ["pt"],
+        description: "Portuguese (Brazilian)?"
     }
-] as const satisfies Voice[];
+} as const satisfies { [key: string]: Voice }
 
 // Assert all voices have some compatible language
-for (const voice of VOICES) {
+for (const voice of Object.values(VOICES)) {
     if (voice.compatibleLanguages.length <= 0) {
         throw new Error(`Voice ${voice.name} has no compatible language`);
     }
 }
 
 export function byName(name: string): Voice | undefined {
-    return VOICES.find(v => v.name === name);
+    return Object.values(VOICES).find(v => v.name === name);
 }
 
 export function byId(id: VoiceId): Voice {
-    return VOICES.find(v => v.id === id)!;
+    return Object.values(VOICES).find(v => v.id === id)!;
+}
+
+export function voiceByKey(key: keyof typeof VOICES): Voice {
+    return VOICES[key]
 }

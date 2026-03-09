@@ -18,5 +18,5 @@ export function translate(lang: LanguageKey, type: TextEventTypeThingie, ...para
     return fillTemplate(template, ...params);
 }
 
-export const supportedLanguages = Object.keys(textTemplates) as LanguageKey[];
-export type SupportedLanguageKey = typeof supportedLanguages[number];
+export const SUPPORTED_TEXT_LANGUAGE_KEYS = Object.keys(textTemplates) as LanguageKey[];
+export type SupportedLanguageKey = typeof SUPPORTED_TEXT_LANGUAGE_KEYS[number];

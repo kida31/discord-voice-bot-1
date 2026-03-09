@@ -17,7 +17,7 @@ import {
 import {type Guild, type VoiceBasedChannel} from "discord.js";
 import {Readable} from "stream";
 import {FIFOQueue} from "../common/FIFOQueue";
-import type {Payload, TTSPlayer, TTSService} from "./tts-stuff";
+import type {Payload, TTSPlayer} from "./tts-stuff";
 import type {LanguageKey} from "@lib/tts/localization/lang";
 import type {TTSProvider} from "@lib/tts/audio-provider";
 
@@ -28,7 +28,7 @@ type PayloadWithResource = {
 
 export class TTSPlayerImpl implements TTSPlayer {
     player: AudioPlayer;
-    tts: TTSService | TTSProvider;
+    tts: TTSProvider;
 
     guild: Guild | undefined;
     channel: VoiceBasedChannel | undefined;
@@ -39,7 +39,7 @@ export class TTSPlayerImpl implements TTSPlayer {
     private queue: FIFOQueue<PayloadWithResource> = new FIFOQueue();
     private subscription: PlayerSubscription | undefined;
 
-    constructor(options: { tts: TTSService | TTSProvider }) {
+    constructor(options: { tts: TTSProvider }) {
         const {tts} = options;
 
         this.player = createAudioPlayer({
@@ -114,8 +114,7 @@ export class TTSPlayerImpl implements TTSPlayer {
             console.error("TTS Player not connected to a guild/channel");
             return;
         }
-        const isNewProvider = (tts: TTSService | TTSProvider): tts is TTSProvider => "toSpeech" in tts && typeof tts.toSpeech === "function";
-        const payloads = isNewProvider(this.tts) ? await this.tts.toSpeech(text) : await this.tts.create(text);
+        const payloads = await this.tts.toSpeech(text);
 
         for (const payload of payloads) {
             // payload.resource ist ein Readable-Stream

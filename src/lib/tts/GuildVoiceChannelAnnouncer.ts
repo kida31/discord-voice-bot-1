@@ -2,7 +2,7 @@ import {Collection, type Guild, GuildMember, type VoiceBasedChannel, VoiceState,
 import {TTSPlayerImpl} from "./TTSAudioPlayer";
 import type {TTSPlayer} from "./tts-stuff";
 import {VoiceConnectionStatus} from "@discordjs/voice";
-import type {LanguageKey} from "@lib/tts/localization/lang";
+import {langByKey, type LanguageKey} from "@lib/tts/localization/lang";
 import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";
 import {byId} from "@lib/tts/audio-provider/eleven-labs/voices";
 import {ElevenLabsProvider, GoogleTranslateTTS} from "@lib/tts/audio-provider";
@@ -140,13 +140,16 @@ async function onMemberChangedChannel(
 function createTTSProvider(config: GuildAnnouncerConfig) {
     if (config.elevenLabsVoiceId) {
         const voice = byId(config.elevenLabsVoiceId);
-        const compatibleLangs = voice.compatibleLanguages ?? [];
-        const isLangValid = compatibleLangs.includes(config.voiceLanguage);
+        const language = langByKey(config.voiceLanguage);
+
+        const compatibleLanguages = voice.compatibleLanguages ?? [];
+        const isLangValid = compatibleLanguages.includes(language.subtag);
         // fallback to first compatible language if configured language is not compatible with the voice
-        const lang = isLangValid ? config.voiceLanguage : voice.compatibleLanguages[0]!;
+        const langCode = isLangValid ? language.subtag : voice.compatibleLanguages[0]!;
+
         return new ElevenLabsProvider({
             voiceId: config.elevenLabsVoiceId,
-            language_code: lang,
+            language_code: langCode,
         })
     } else {
         return new GoogleTranslateTTS({

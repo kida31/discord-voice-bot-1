@@ -1,13 +1,13 @@
 import {CommandInteraction, SlashCommandBuilder} from "discord.js";
 import type {ChatInputCommand} from "./type";
 import {setGuildTextLanguage,} from "@lib/tts/GuildVoiceChannelAnnouncer";
-import {type SupportedLanguageKey as TextLanguageKey, supportedLanguages} from "@lib/tts/localization/text";
-import {byKey} from "@lib/tts/localization/lang";
+import {SUPPORTED_TEXT_LANGUAGE_KEYS, type SupportedLanguageKey as TextLanguageKey} from "@lib/tts/localization/text";
+import {langByKey} from "@lib/tts/localization/lang";
 
-const languageOptions: { name: string; value: TextLanguageKey }[] = supportedLanguages
-    .filter(key => byKey(key))
+const languageOptions: { name: string; value: TextLanguageKey }[] = SUPPORTED_TEXT_LANGUAGE_KEYS
+    .filter(key => langByKey(key))
     .map(key => {
-        const l = byKey(key);
+        const l = langByKey(key);
         return {
             name: l.name == l.en_name ? l.name : `${l.name} (${l.en_name})`,
             value: key,
