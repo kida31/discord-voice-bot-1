@@ -37,12 +37,12 @@ export const VOICES = {
         compatibleLanguages: ["de"],
         description: "Der Allerbeste"
     },
-    "pt": {
-        id: "ZtXh8n9l7sL1v2m5o3qJ" as VoiceId,
-        name: "???",
-        compatibleLanguages: ["pt"],
-        description: "Portuguese (Brazilian)?"
-    }
+    // "pt": {
+    //     id: "ZtXh8n9l7sL1v2m5o3qJ" as VoiceId, // DOES NOT EXIST
+    //     name: "???",
+    //     compatibleLanguages: ["pt"],
+    //     description: "Portuguese (Brazilian)?"
+    // }
 } as const satisfies { [key: string]: Voice }
 
 // Assert all voices have some compatible language
