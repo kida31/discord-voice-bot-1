@@ -1,18 +1,17 @@
 import googleTTS from "google-tts-api";
-import {type LanguageCode, Payload, type TTSService} from "../tts-stuff";
+import {Payload, type TTSService, type URLString} from "../tts-stuff";
 import type {TTSProvider} from "@lib/tts/audio-provider/type";
+import type {Subtag} from "@lib/tts/localization/lang";
 
-// TODO verify
-type SupportedLanguage = Extract<LanguageCode, "en-US">;
-type ReadSpeed = "normal"
+type ReadSpeed = "normal" | "slow"; // TODO verify
 
 interface GoogleTranslateProviderConfig {
-    language: SupportedLanguage;
-    speed: ReadSpeed;
+    language: Subtag;
+    speed: ReadSpeed
 }
 
 const DEFAULT_CONFIG = {
-    language: "en-US",
+    language: "en",
     speed: "normal",
 } as const satisfies GoogleTranslateProviderConfig;
 
@@ -23,8 +22,8 @@ export class GoogleTranslateTTS implements TTSService, TTSProvider {
     static readonly NAME = "Google TTS";
     static readonly FRIENDLY_NAME = "Google Translate TTS";
 
-    language: SupportedLanguage;
-    speed: ReadSpeed;
+    private language: Subtag;
+    private speed: ReadSpeed;
 
     constructor(readonly config?: Partial<GoogleTranslateProviderConfig>) {
         const {language, speed} = {
@@ -38,7 +37,7 @@ export class GoogleTranslateTTS implements TTSService, TTSProvider {
 
     async create(
         sentence: string,
-        extras: { language: LanguageCode; speed?: string },
+        extras: { language: Subtag; speed?: string },
     ): Promise<Payload[]> {
         return new Promise((resolve, reject) => {
             try {
@@ -50,7 +49,7 @@ export class GoogleTranslateTTS implements TTSService, TTSProvider {
 
                 resolve(
                     data.map(({url, shortText}) => {
-                        return new Payload(url, shortText, GoogleTranslateTTS.NAME, extras);
+                        return new Payload(url as URLString, shortText, GoogleTranslateTTS.NAME, extras);
                     }),
                 );
             } catch (error) {
@@ -59,7 +58,7 @@ export class GoogleTranslateTTS implements TTSService, TTSProvider {
         });
     }
 
-    async synthesize(text: string): Promise<Payload[]> {
+    async toSpeech(text: string): Promise<Payload[]> {
         return this.create(text, {
             language: this.language,
             speed: this.speed,

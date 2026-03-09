@@ -1,4 +1,4 @@
-import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
+import type {AudioPlayer, createAudioResource, VoiceConnection} from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
 import type {LanguageKey} from "@lib/tts/localization/lang";
 
@@ -27,7 +27,7 @@ export interface TTSPlayer {
 
   languageCode: LanguageKey;
 
-  connect(options: { guild: Guild; channel: VoiceBasedChannel }): Promise<any>;
+  connect(options: { guild: Guild; channel: VoiceBasedChannel }): Promise<VoiceConnection>;
   play(text: string): Promise<void>;
   destroy(): void;
 }
@@ -41,7 +41,7 @@ export interface TTSService {
  */
 export class Payload {
   constructor(
-    public resource: ReadableStream,
+    public resource: Parameters<typeof createAudioResource>[0],
     public sentence: string,
     public providerName: string,
     public extras: { [key: string]: any },
