@@ -1,4 +1,4 @@
-import type {LanguageKey, Subtag} from "@lib/tts/localization/lang";
+import type {LanguageKey} from "@lib/tts/localization/lang";
 import type {TemplateMapping, TextEventTypeThingie} from "@lib/tts/localization/text/type";
 
 import {alpha, oliver} from "@lib/tts/localization/text/other";
@@ -17,7 +17,7 @@ function fillTemplate(template: string, ...params: string[]): string {
     });
 }
 
-export function translate(lang: Subtag, type: TextEventTypeThingie, ...params: string[]): string {
+export function translate(lang: LanguageKey, type: TextEventTypeThingie, ...params: string[]): string {
     if (lang as keyof typeof textTemplates) {
         const langTemplates = textTemplates[lang as keyof typeof textTemplates];
         if (langTemplates && type in langTemplates) {
@@ -29,3 +29,6 @@ export function translate(lang: Subtag, type: TextEventTypeThingie, ...params: s
     }
     return fillTemplate(textTemplates.en[type], ...params);
 }
+
+export const supportedLanguages = Object.keys(textTemplates) as LanguageKey[];
+export type SupportedLanguageKey = typeof supportedLanguages[number];
