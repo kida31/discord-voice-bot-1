@@ -33,8 +33,7 @@ export class GuildAnnouncerConfigRepository {
     updateConfig(updates: Partial<GuildAnnouncerConfig> & Pick<GuildAnnouncerConfig, "guildId">) {
         const guildId = updates.guildId;
         const key = makeKey(guildId);
-        const existingJson = getValue(key);
-        const existingConfig = existingJson ? JSON.parse(existingJson) as GuildAnnouncerConfig : undefined;
+        const existingConfig = this.getConfig(key);
 
         if (existingConfig) {
             const updatedConfig = {...existingConfig, ...updates};
