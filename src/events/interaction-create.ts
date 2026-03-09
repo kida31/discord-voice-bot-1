@@ -9,6 +9,6 @@ export default function interactionCreateListener(
   const cmd = commands.get(itx.commandName);
   if (!cmd) return;
 
-  console.log(itx.user.username, "triggered", cmd?.data.name);
+  console.log(`"${itx.guild?.name}" > "${itx.user.username}" invoked /${cmd?.data.name}`);
   cmd?.execute(itx);
 }

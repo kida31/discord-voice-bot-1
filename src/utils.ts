@@ -38,7 +38,7 @@ export async function deployCommands(global: boolean = false) {
   }
 }
 
-async function getUserVoiceChannel(guild: Guild, user: User) {
+export async function getUserVoiceChannel(guild: Guild, user: User) {
   const state = await guild.voiceStates.fetch(user);
   return state.channel;
 }

@@ -1,58 +1,35 @@
-import type { KeyValueOperations } from "@lib/common/util-types";
-import { Collection, Guild, User } from "discord.js";
+import {Guild, User} from "discord.js";
+import {GuildAnnouncerConfigRepository} from "@lib/persist/GuildAnnouncerConfigRepository";
 
 export const ALIAS_MAX_LENGTH = 64;
 
-interface ConfigOptions {
-  persist?: Partial<KeyValueOperations<string, string>>;
-}
-
-let _db: Partial<KeyValueOperations<string, string>> = {};
-let cache: Collection<string, string> = new Collection();
-
-function memberAsKey(guildId: Guild["id"], userId: User["id"]): string {
-  return `${guildId}/${userId}`;
-}
-
-export function configureAlias(options: ConfigOptions) {
-  _db = options.persist ?? {};
-}
-
 export function setAlias(
-  guildId: Guild["id"],
-  userId: User["id"],
-  alias: string,
+    guildId: Guild["id"],
+    userId: User["id"],
+    alias: string,
 ): void {
-  if (alias.length > ALIAS_MAX_LENGTH) {
-    throw new Error("Alias is too long");
-  }
+    if (alias.length > ALIAS_MAX_LENGTH) {
+        throw new Error("Alias is too long");
+    }
 
-  const key = memberAsKey(guildId, userId);
-
-  cache.set(key, alias);
-  _db.set?.(key, alias);
+    const repo = new GuildAnnouncerConfigRepository();
+    const config = repo.getConfig(guildId);
+    config.aliases[userId] = alias;
+    repo.updateConfig(config);
 }
 
 export function deleteAlias(guildId: Guild["id"], userId: User["id"]): void {
-  const key = memberAsKey(guildId, userId);
-
-  cache.delete(key);
-  _db.delete?.(key);
+    const repo = new GuildAnnouncerConfigRepository();
+    const config = repo.getConfig(guildId);
+    delete config.aliases[userId];
+    repo.updateConfig(config);
 }
 
 export function getAlias(
-  guildId: Guild["id"],
-  userId: User["id"],
+    guildId: Guild["id"],
+    userId: User["id"],
 ): string | undefined {
-  const key = memberAsKey(guildId, userId);
-
-  const value = _db.get?.(key) ?? cache.get(key);
-
-  if (!!value) {
-    cache.set(key, value);
-  } else {
-    cache.delete(key);
-  }
-
-  return value;
+    const repo = new GuildAnnouncerConfigRepository();
+    const config = repo.getConfig(guildId);
+    return config.aliases[userId];
 }
