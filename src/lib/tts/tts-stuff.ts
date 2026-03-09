@@ -1,6 +1,7 @@
 import type {AudioPlayer, createAudioResource, VoiceConnection} from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
 import type {LanguageKey} from "@lib/tts/localization/lang";
+import type {TTSProvider} from "@lib/tts/audio-provider";
 
 // https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
 export type LanguageCode = "en-US" | "vi-VN" | "de-DE" | "ja-JP" | "ko-KR" | "de-CH";
@@ -19,7 +20,7 @@ export function getNickname(l: LanguageCode): string {
 
 export interface TTSPlayer {
   player: AudioPlayer;
-  tts: TTSService;
+  tts: TTSService | TTSProvider;
 
   guild: Guild | undefined;
   channel: VoiceBasedChannel | undefined;
