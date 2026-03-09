@@ -1,8 +1,8 @@
 import type {LanguageKey} from "@lib/tts/localization/lang";
 
 export type TextEventTypeThingie = "join" | "leave" | "muted" | "unmuted";
-export type TemplateMapping = { [key in TextEventTypeThingie]: string }
-export type LanguageTemplateMapping = { [key in LanguageKey]?: Partial<TemplateMapping> }
+export type TemplateMapping = { [key in TextEventTypeThingie]?: string } & { name: string }
+export type LanguageTemplateMapping = { [key in LanguageKey]?: TemplateMapping }
 
 // Template of the form "Hello {0}, welcome to {1}!" where {0} and {1} are placeholders for parameters.
 export function fillTemplate(template: string, ...params: string[]): string {
