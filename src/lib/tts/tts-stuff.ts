@@ -1,12 +1,10 @@
 import type {AudioPlayer, createAudioResource, VoiceConnection} from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
-import type {LanguageKey} from "@lib/tts/localization/lang";
+import type {BCP47, LanguageKey} from "@lib/tts/localization/lang";
 import type {TTSProvider} from "@lib/tts/audio-provider";
 
 // https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
-export type LanguageCode = "en-US" | "vi-VN" | "de-DE" | "ja-JP" | "ko-KR" | "de-CH";
-
-const botNickname: Collection<LanguageCode, string> = new Collection();
+const botNickname: Collection<BCP47, string> = new Collection();
 botNickname.set("en-US", "Announcer");
 botNickname.set("vi-VN", "VTV4 Announcer");
 botNickname.set("de-DE", "BRD Sprecher");
@@ -14,7 +12,7 @@ botNickname.set("ja-JP", "日本語アナウンサー");
 botNickname.set("ko-KR", "아나운서");
 botNickname.set("de-CH", "Ballerina Cappuccina");
 
-export function getNickname(l: LanguageCode): string {
+export function getNickname(l: BCP47): string {
   return botNickname.get(l) ?? botNickname.get("en-US")!;
 }
 

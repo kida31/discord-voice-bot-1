@@ -5,7 +5,6 @@ export type VoiceId = string & { __brand: "VoiceId" };
 export interface Voice {
     id: VoiceId;
     name: string;
-    key: string;
     description?: string;
-    compatibleLanguages?: LanguageKey[];
+    compatibleLanguages: LanguageKey[];
 }

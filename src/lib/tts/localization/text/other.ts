@@ -6,8 +6,8 @@ export const alpha = {
 } satisfies Partial<TemplateMapping>;
 
 export const oliver = {
-    join: 'Yooo {0} lets gooo!',
-    leave: '{0} der Verräter ist gegangen.`'
+    join: "Yooo {0} lets gooo!",
+    leave: "{0} der Verräter ist gegangen."
 } satisfies Partial<TemplateMapping>;
 
 export const de2 = {

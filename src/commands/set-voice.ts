@@ -1,9 +1,10 @@
 import {CommandInteraction, SlashCommandBuilder} from "discord.js";
 import type {ChatInputCommand} from "./type";
 import {setGuildVoiceLanguage,} from "@lib/tts/GuildVoiceChannelAnnouncer";
-import {byId as voiceById, type VoiceId, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {byId as voiceById, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {SupportedLanguageKey} from "@lib/tts/localization/voice";
 import {bySubtag, type Subtag} from "@lib/tts/localization/lang";
+import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 
 const defaultLangTagOptions = ['en', 'de', 'ja', 'vi', 'ko'] as const satisfies SupportedLanguageKey[];
 

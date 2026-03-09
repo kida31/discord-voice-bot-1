@@ -1,6 +1,5 @@
 /** List of languages with code (subtag) and name */
 import {common, type Subtag} from "@lib/tts/localization/lang/common";
-import {others} from "@lib/tts/localization/lang/other";
 
 export type Info = {
     name: string;
@@ -10,10 +9,7 @@ export type Info = {
     description?: string;
 }
 
-export const languages = {
-    ...common,
-    ...others,
-} satisfies { [key: string]: Info };
+export const languages = common satisfies { [key: string]: Info };
 
 export type {Subtag, BCP47} from "@lib/tts/localization/lang/common";
 

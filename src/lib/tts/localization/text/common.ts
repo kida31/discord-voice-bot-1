@@ -5,11 +5,11 @@
 import type {TemplateMapping} from "@lib/tts/localization/text/template";
 
 export const en = {
-    join: "{0} joined the voice channel",
-    leave: "{0} left the voice channel",
+    join: "{0} joined the channel",
+    leave: "{0} left the channel",
     muted: "{0} is muted",
     unmuted: "{0} is unmuted",
-} satisfies TemplateMapping
+} satisfies Required<TemplateMapping> // NOT PARTIAL, English is the default and should have all templates defined
 
 export const de = {
     join: "{0} ist dem Channel beigetreten",
@@ -19,10 +19,6 @@ export const de = {
 } satisfies Partial<TemplateMapping>;
 
 export const vi = {
-    // "welcome": "Chào mừng bạn đến với ứng dụng của chúng tôi!",
-    // "goodbye": "Tạm biệt! Hẹn gặp lại sau.",
-    // "thank_you": "Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi.",
-    // "error_occurred": "Đã xảy ra lỗi. Vui lòng thử lại sau.",
     join: "{0} đã tham gia channel",
     leave: "{0} đã rời khỏi channel",
     muted: "{0} đã tắt tiếng cho mình.",

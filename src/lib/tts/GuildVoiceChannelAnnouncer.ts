@@ -2,14 +2,12 @@ import {Collection, type Guild, GuildMember, type VoiceBasedChannel, VoiceState,
 import {TTSPlayerImpl} from "./TTSAudioPlayer";
 import type {TTSPlayer} from "./tts-stuff";
 import {VoiceConnectionStatus} from "@discordjs/voice";
-// import { GoogleCloudProvider } from "./audio-provider/GoogleCloudProvider";
-import {ALIAS_MAX_LENGTH, getAlias} from "./member-alias";
-import type {KeyValueOperations} from "@lib/common/util-types";
-import {PersistedMap} from "@lib/persist/PersistedMap";
 import type {LanguageKey} from "@lib/tts/localization/lang";
 import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";
-import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/voices";
-import {GoogleTranslateTTS} from "@lib/tts/audio-provider";
+import {byId} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {ElevenLabsProvider, GoogleTranslateTTS} from "@lib/tts/audio-provider";
+import {type GuildAnnouncerConfig, GuildAnnouncerConfigRepository} from "@lib/persist/GuildAnnouncerConfigRepository";
+import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
 
@@ -21,31 +19,6 @@ const guildAnnouncerCache = new Collection<
 type VoiceStateWithChannel = VoiceState & {
     channel: Exclude<VoiceState["channel"], null>;
 };
-
-const DEFAULT_TEXT_LANG: LanguageKey = "en";
-const DEFAULT_VOICE_LANG: LanguageKey = "en";
-
-const baseKey = "tts";
-const guildKey = (guildId: string) => `${baseKey}/${guildId}`;
-
-export function configureGVCAnnouncer(options: {
-    persist: {
-        text: KeyValueOperations<string, string>;
-        voice: KeyValueOperations<string, string>;
-    };
-}) {
-    _guildTextLanguageMap = new PersistedMap<Guild["id"], LanguageKey>({
-        persistance: options.persist.text,
-        toStringKey: (guildId: string) => `${guildKey(guildId)}/text/lang`,
-        toStringValue: (l) => l,
-    });
-
-    _guildVoiceLanguageMap = new PersistedMap<Guild["id"], LanguageKey>({
-        persistance: options.persist.voice,
-        toStringKey: (guildId: string) => `${guildKey(guildId)}/voice/lang`,
-        toStringValue: (l) => l,
-    });
-}
 
 /** Tracks guild. Will automatically spawn and despawn announcer when someone joins a channel */
 export function subscribeToGuild(guildId: Guild["id"]) {
@@ -120,7 +93,7 @@ async function onMemberDisconnect(oldState: VoiceStateWithChannel) {
     if (announcer) {
         // Announcement Handling
         announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
-        await announcer?.play(translate(getGuildTextLanguage(oldState.guild.id), "leave", memberName(oldState.member!)));
+        await announcer?.play(translate(getGuildTextLanguage(oldState.guild.id), "leave", getMemberNickname(oldState.member!)));
     }
 }
 
@@ -144,7 +117,7 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
     if (announcer && announcerIsOnChannel(newState.channel)) {
         // Announcement Handling
         announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
-        await announcer?.play(translate(getGuildTextLanguage(newState.guild.id), "join", memberName(newState.member!))
+        await announcer?.play(translate(getGuildTextLanguage(newState.guild.id), "join", getMemberNickname(newState.member!))
         );
     }
 }
@@ -164,17 +137,32 @@ async function onMemberChangedChannel(
     await onMemberConnect(newState);
 }
 
+function createTTSProvider(config: GuildAnnouncerConfig) {
+    if (config.elevenLabsVoiceId) {
+        const voice = byId(config.elevenLabsVoiceId);
+        const compatibleLangs = voice.compatibleLanguages ?? [];
+        const isLangValid = compatibleLangs.includes(config.voiceLanguage);
+        // fallback to first compatible language if configured language is not compatible with the voice
+        const lang = isLangValid ? config.voiceLanguage : voice.compatibleLanguages[0]!;
+        return new ElevenLabsProvider({
+            voiceId: config.elevenLabsVoiceId,
+            language_code: lang,
+        })
+    } else {
+        return new GoogleTranslateTTS({
+            language: config.voiceLanguage,
+        });
+    }
+}
+
 export async function createTTSPlayer(
     guild: Guild,
     channel: VoiceBasedChannel,
 ): Promise<TTSPlayer> {
+    const config = new GuildAnnouncerConfigRepository().getConfig(guild.id);
     const player = new TTSPlayerImpl({
-        tts: new GoogleTranslateTTS(),
+        tts: createTTSProvider(config),
     });
-
-    if (getGuildVoiceLanguage(guild.id)) {
-        player.languageCode = getGuildVoiceLanguage(guild.id)!;
-    }
 
     console.log(`Connecting... (${guild.name}, ${channel.name})`);
     await player.connect({guild, channel});
@@ -209,45 +197,37 @@ function announcerIsOnChannel(channel: VoiceBasedChannel) {
     return announcer.channel?.id == channel.id;
 }
 
-let _guildVoiceLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
-    new Map();
-let _guildTextLanguageMap: KeyValueOperations<Guild["id"], LanguageKey> =
-    new Map();
-let _guildVoiceIdMap: KeyValueOperations<Guild["id"], VoiceId> =
-    new Map();
-
-export function setGuildVoiceLanguage(
-    guildId: Guild["id"],
-    l: LanguageKey,
-): void {
-    _guildVoiceLanguageMap.set(guildId, l);
-
-    const announcer = getAnnouncer(guildId);
-    if (announcer) {
-        announcer.languageCode = l;
-    }
+export function setGuildVoiceLanguage(guildId: Guild["id"], l: LanguageKey,): void {
+    const rep = new GuildAnnouncerConfigRepository();
+    rep.updateConfig({guildId, voiceLanguage: l, elevenLabsVoiceId: null});
 }
 
 export function getGuildVoiceLanguage(guildId: Guild["id"]): LanguageKey {
-    return _guildVoiceLanguageMap.get(guildId) ?? DEFAULT_VOICE_LANG;
+    const rep = new GuildAnnouncerConfigRepository();
+    return rep.getConfig(guildId).voiceLanguage;
 }
 
-export function setGuildTextLanguage(
-    guildId: Guild["id"],
-    l: SupportedLanguageKey,
-): void {
-    _guildTextLanguageMap.set(guildId, l);
+export function setGuildTextLanguage(guildId: Guild["id"], l: SupportedLanguageKey,): void {
+    const rep = new GuildAnnouncerConfigRepository();
+    rep.updateConfig({guildId, textLanguage: l,});
 }
 
 export function getGuildTextLanguage(guildId: Guild["id"]): SupportedLanguageKey {
-    return _guildTextLanguageMap.get(guildId) ?? DEFAULT_TEXT_LANG;
+    const rep = new GuildAnnouncerConfigRepository();
+    return rep.getConfig(guildId).textLanguage;
 }
 
-function memberName(member: GuildMember): string {
-    return (
-        getAlias(member.guild.id, member.user.id) ??
-        member.nickname ??
-        member.user.displayName ??
-        "User"
-    ).substring(0, ALIAS_MAX_LENGTH); // Verify against max length, just in case
+export function setGuildVoiceModel(guildId: Guild["id"], voiceId: VoiceId | null): void {
+    const rep = new GuildAnnouncerConfigRepository();
+    rep.updateConfig({guildId, elevenLabsVoiceId: voiceId,});
+}
+
+export function getGuildVoiceModel(guildId: Guild["id"]): VoiceId | null {
+    const rep = new GuildAnnouncerConfigRepository();
+    return rep.getConfig(guildId).elevenLabsVoiceId;
+}
+
+function getMemberNickname(member: GuildMember): string {
+    const alias = new GuildAnnouncerConfigRepository().getConfig(member.guild.id).aliases[member.user.id];
+    return alias ?? member.nickname ?? member.user.displayName ?? "User";
 }

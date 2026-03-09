@@ -15,11 +15,13 @@ function getDb() {
     db.pragma("journal_mode = WAL");
 
     cachedDatabase = db;
-    const result = db.prepare(
-        "CREATE TABLE IF NOT EXISTS " +
-        TABLE_NAME +
-        "(key TEXT PRIMARY KEY ASC, value TEXT)",
-    ).run();
+    const result = db
+        .prepare(
+            "CREATE TABLE IF NOT EXISTS " +
+            TABLE_NAME +
+            "(key TEXT PRIMARY KEY ASC, value TEXT)",
+        )
+        .run();
     if (result.changes) console.log("Initialized database");
 
     return cachedDatabase;
@@ -30,21 +32,24 @@ export function storeValue(key: string, value: string | null): void {
         throw new Error("Invalid key" + key);
     }
     const db = getDb();
-    db.prepare("REPLACE INTO ${TABLE_NAME} (key, value) VALUES(?, ? )")
+    db
+        .prepare("REPLACE INTO " + TABLE_NAME + " (key, value) VALUES(?, ? )")
         .run(key, value,);
 }
 
 export function getValue(key: string): string | undefined {
     const db = getDb();
     const res = db
-        .prepare("SELECT * FROM ${TABLE_NAME} WHERE key =?;")
+        .prepare("SELECT * FROM " + TABLE_NAME + " WHERE key =?;")
         .get(key) as TableData | undefined;
     return res?.value;
 }
 
 export function deleteValue(key: string): boolean {
     const db = getDb();
-    return !!db.prepare(`DELETE
-                         FROM ${TABLE_NAME}
-                         WHERE key =?;`).run(key);
+    return !!db
+        .prepare(`DELETE
+                  FROM ${TABLE_NAME}
+                  WHERE key =?;`)
+        .run(key);
 }
