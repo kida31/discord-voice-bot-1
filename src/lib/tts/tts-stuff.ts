@@ -1,5 +1,6 @@
 import type { AudioPlayer, VoiceConnection } from "@discordjs/voice";
 import { Collection, type Guild, type VoiceBasedChannel } from "discord.js";
+import type {LanguageKey} from "@lib/tts/localization/lang";
 
 // https://docs.cloud.google.com/speech-to-text/docs/speech-to-text-supported-languages
 export type LanguageCode = "en-US" | "vi-VN" | "de-DE" | "ja-JP" | "ko-KR" | "de-CH";
@@ -24,7 +25,7 @@ export interface TTSPlayer {
   channel: VoiceBasedChannel | undefined;
   connection: VoiceConnection | undefined;
 
-  languageCode: LanguageCode;
+  languageCode: LanguageKey;
 
   connect(options: { guild: Guild; channel: VoiceBasedChannel }): Promise<any>;
   play(text: string): Promise<void>;
