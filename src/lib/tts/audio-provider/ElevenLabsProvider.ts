@@ -84,8 +84,10 @@ export class ElevenLabsProvider implements TTSService {
 
   private apiKey: string;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey ?? process.env.ELEVENLABS_API_KEY ?? "";
+  constructor(config?: {
+    apiKey?: string;
+  }) {
+    this.apiKey = config?.apiKey ?? process.env["ELEVENLABS_API_KEY"] ?? "";
     if (!this.apiKey) {
       throw new Error("Missing ELEVENLABS_API_KEY");
     }
