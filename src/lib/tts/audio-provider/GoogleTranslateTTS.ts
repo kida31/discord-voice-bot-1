@@ -34,7 +34,7 @@ export class GoogleTranslateTTS implements TTSProvider {
     }
 
     async createAudio(text: string): Promise<Payload[]> {
-        console.log(`[GoogleTranslateTTS] toSpeech with config:`, this.language, this.slow);
+        console.log(`[GoogleTranslateTTS] createAudio with config:`, this.language, this.slow);
         return new Promise((resolve, reject) => {
             try {
                 const data = googleTTS.getAllAudioUrls(text, {

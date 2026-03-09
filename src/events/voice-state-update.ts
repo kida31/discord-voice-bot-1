@@ -43,7 +43,5 @@ export async function announceSelfMuteChange(
         ? translate(textLang, "muted", memberName)
         : translate(textLang, "unmuted", memberName)
 
-    announcer.languageCode =
-        GuildVCAnnouncer.getGuildVoiceLanguage(state.guild.id);
     await announcer.play(message);
 }

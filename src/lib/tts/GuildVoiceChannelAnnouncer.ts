@@ -92,7 +92,6 @@ async function onMemberDisconnect(oldState: VoiceStateWithChannel) {
     // Announcement Handling
     if (announcer) {
         // Announcement Handling
-        announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
         await announcer?.play(translate(getGuildTextLanguage(oldState.guild.id), "leave", getMemberNickname(oldState.member!)));
     }
 }
@@ -116,7 +115,6 @@ async function onMemberConnect(newState: VoiceStateWithChannel) {
 
     if (announcer && announcerIsOnChannel(newState.channel)) {
         // Announcement Handling
-        announcer.languageCode = getGuildVoiceLanguage(announcer.guild!.id!);
         await announcer?.play(translate(getGuildTextLanguage(newState.guild.id), "join", getMemberNickname(newState.member!))
         );
     }
@@ -194,6 +192,16 @@ export function destroyTTSPlayer(guild: Guild): void {
     guildAnnouncerCache.set(guild.id, null);
 }
 
+export async function updateTTSPlayer(guild: Guild) {
+    const player = getAnnouncer(guild.id);
+    if (!player) return;
+
+    const channel = player.channel;
+    if (!channel) return;
+
+    destroyTTSPlayer(guild);
+    await createTTSPlayer(guild, channel);
+}
 function announcerIsOnChannel(channel: VoiceBasedChannel) {
     const announcer = getAnnouncer(channel.guildId);
     if (!announcer) return false;

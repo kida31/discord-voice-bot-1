@@ -1,11 +1,23 @@
 import {CommandInteraction, SlashCommandBuilder} from "discord.js";
 import type {ChatInputCommand} from "./type";
-import {setGuildVoiceLanguage, setGuildVoiceModel,} from "@lib/tts/GuildVoiceChannelAnnouncer";
+import {
+    getAnnouncer,
+    setGuildVoiceLanguage,
+    setGuildVoiceModel,
+    updateTTSPlayer,
+} from "@lib/tts/GuildVoiceChannelAnnouncer";
 import {byId as voiceById, VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {SupportedLanguageKey} from "@lib/tts/localization/voice";
 import {langBySubtag, type Subtag} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 import {getLanguageNickname, getVoiceNickname} from "@lib/tts/bot-nickname";
+
+const LANG_TAG_OPTION_NAME = "tag";
+const VOICE_ID_OPTION_NAME = "voicemodel";
+
+const SUBCOMMAND_LANGCODE = "languagecode";
+const SUBCOMMAND_ELEVENLABS = "elevenlabs";
+
 
 const defaultLangTagOptions = ['en', 'de', 'ja', 'vi', 'ko'] as const satisfies SupportedLanguageKey[];
 
@@ -20,15 +32,14 @@ const langTagOptions = defaultLangTagOptions.map(tag => {
 const voiceOptions = Object.values(VOICES)
     .map(v => ({name: v.name, value: v.id}));
 
-const LANG_TAG_OPTION_NAME = "tag";
-const VOICE_ID_OPTION_NAME = "voicemodel";
+
 
 const data = new SlashCommandBuilder()
     .setName("voice")
     .setDescription("Set voice for TTS player.")
     .addSubcommand(sc =>
         sc
-            .setName("language")
+            .setName(SUBCOMMAND_LANGCODE)
             .setDescription("Set voice by common language tag.")
             .addStringOption(opt =>
                 opt
@@ -39,7 +50,7 @@ const data = new SlashCommandBuilder()
     )
     .addSubcommand(sc =>
         sc
-            .setName('elevenlabs')
+            .setName(SUBCOMMAND_ELEVENLABS)
             .setDescription("Set voice model for ElevenLabs. This overrides the language tag setting, if any.")
             .addStringOption(opt =>
                 opt
@@ -55,7 +66,12 @@ async function execute(interaction: CommandInteraction): Promise<void> {
 
     const subcommand = interaction.options.getSubcommand(true);
 
-    if (subcommand === "tag") {
+    if (![SUBCOMMAND_LANGCODE, SUBCOMMAND_ELEVENLABS].includes(subcommand) || !interaction.guild) {
+        console.error("Unknown subcommand in 'voice'>", subcommand);
+        return;
+    }
+
+    if (subcommand === SUBCOMMAND_LANGCODE) {
         const langtag = interaction.options.getString(LANG_TAG_OPTION_NAME, true) as Subtag;
         const language = langBySubtag(langtag);
 
@@ -70,7 +86,7 @@ async function execute(interaction: CommandInteraction): Promise<void> {
         await interaction.reply({
             content: `Voice set to: **${language.name} (${language.en_name})**`,
         });
-    } else if (subcommand === "elevenlabs") {
+    } else if (subcommand === SUBCOMMAND_ELEVENLABS) {
         const voiceId = interaction.options.getString(VOICE_ID_OPTION_NAME, true) as VoiceId;
         console.log("Selected voice ID:", voiceId);
         const voice = voiceById(voiceId);
@@ -86,10 +102,10 @@ async function execute(interaction: CommandInteraction): Promise<void> {
         await interaction.reply({
             content: `Voice set to: **${voice.name}**`,
         });
-    } else {
-        console.error("Unknown command in 'language'>", subcommand);
+    }
 
-        return;
+    if (getAnnouncer(interaction.guildId)) {
+        await updateTTSPlayer(interaction.guild)
     }
 }
 
