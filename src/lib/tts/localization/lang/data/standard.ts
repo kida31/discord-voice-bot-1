@@ -1,8 +1,7 @@
-import {type Info} from "@lib/tts/localization/lang/index";
+import type {StandardLanguage} from "../types";
 
-export type CommonLanguage = Info & { subtag: string; }
-
-export const common = {
+/** List of languages with code (subtag) and name */
+export const standard = {
     "af": {
         "en_name": "Afrikaans",
         "name": "Afrikaans",
@@ -668,8 +667,4 @@ export const common = {
         "name": "isiZulu",
         "subtag": "zu"
     }
-} as const satisfies { [key: string]: CommonLanguage };
-
-export type Subtag = typeof common[keyof typeof common]["subtag"];
-/** Tag-Subtag-Region codes according to convention BCP47 */
-export type BCP47 = Exclude<`${Subtag}-${string}`, `${Subtag}-`> | Subtag;
+} as const satisfies { [key: string]: StandardLanguage };

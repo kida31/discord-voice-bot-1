@@ -1,16 +1,19 @@
+import type {TemplateMapping} from "@lib/tts/localization/text/template";
+
 /**
+ * List of all text data for different languages.
+ * Each language should have the same set of data, but can be more casual or formal depending on the language.
+ *
  * If this file gets too long, split languages in own files.
  * If possible export files as json for runtime flexibility
  * */
-import type {TemplateMapping} from "@lib/tts/localization/text/template";
-
 export const en = {
     name: "English",
     join: "{0} joined the channel",
     leave: "{0} left the channel",
     muted: "{0} is muted",
     unmuted: "{0} is unmuted",
-} satisfies Required<TemplateMapping> // NOT PARTIAL, English is the default and should have all templates defined
+} satisfies Required<TemplateMapping> // NOT PARTIAL, English is the default and should have all data defined
 
 export const de = {
     name: "Deutsch",
