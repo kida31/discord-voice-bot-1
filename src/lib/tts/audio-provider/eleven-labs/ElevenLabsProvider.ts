@@ -1,7 +1,7 @@
 import type {Guild} from "discord.js";
 import {PassThrough, Readable} from "stream";
 import {spawn} from "child_process";
-import {Payload} from "../../tts-stuff";
+import {Payload} from "../../types";
 import type {BCP47} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 import { VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";

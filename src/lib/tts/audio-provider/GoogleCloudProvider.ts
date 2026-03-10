@@ -2,7 +2,7 @@ import type {Guild} from "discord.js";
 import {TextToSpeechClient} from "@google-cloud/text-to-speech";
 import {Readable} from "stream";
 import {spawn} from "child_process";
-import {Payload} from "../tts-stuff";
+import {Payload} from "../types";
 import type {TTSProvider} from "@lib/tts/audio-provider/type";
 import type {BCP47, Subtag} from "@lib/tts/localization/lang";
 
