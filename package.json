@@ -23,8 +23,9 @@
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "deploy:commands": "tsx src/deploy-commands.ts",
-    "deploy:commands:global": "tsx src/deploy-commands-global.ts"
+    "deploy:commands": "tsx src/scripts/deploy-cmd-guild.ts",
+    "deploy:commands:global": "tsx src/scripts/deploy-cmd-global.ts",
+    "deploy:commands:force": "tsx src/scripts/refresh-cmd-guild.ts"
   },
   "type": "module"
 }
