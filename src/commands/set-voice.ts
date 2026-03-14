@@ -41,7 +41,7 @@ const data = new SlashCommandBuilder()
         sc
             .setName(SUBCOMMAND_LANGCODE)
             .setNameLocalization("de", "kürzel")
-            .setDescription("Set voice by common language tag.")
+            .setDescription("Set voice by standard language tag.")
             .setDescriptionLocalization("de", "Stimme anhand eines Sprachkürzels festlegen.")
             .addStringOption(opt =>
                 opt

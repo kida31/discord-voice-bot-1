@@ -17,8 +17,7 @@ import {
 import {type Guild, type VoiceBasedChannel} from "discord.js";
 import {Readable} from "stream";
 import {FIFOQueue} from "../common/FIFOQueue";
-import type {Payload, TTSPlayer} from "./tts-stuff";
-import type {LanguageKey} from "@lib/tts/localization/lang";
+import type {Payload, TTSPlayer} from "./types";
 import type {TTSProvider} from "@lib/tts/audio-provider";
 
 type PayloadWithResource = {
@@ -33,8 +32,6 @@ export class TTSPlayerImpl implements TTSPlayer {
     guild: Guild | undefined;
     channel: VoiceBasedChannel | undefined;
     connection: VoiceConnection | undefined;
-
-    languageCode: LanguageKey = "en";
 
     private queue: FIFOQueue<PayloadWithResource> = new FIFOQueue();
     private subscription: PlayerSubscription | undefined;

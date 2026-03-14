@@ -1,6 +1,6 @@
 import {Collection, type Guild, GuildMember, type VoiceBasedChannel, VoiceState,} from "discord.js";
 import {TTSPlayerImpl} from "./TTSAudioPlayer";
-import type {TTSPlayer} from "./tts-stuff";
+import type {TTSPlayer} from "./types";
 import {VoiceConnectionStatus} from "@discordjs/voice";
 import {langByKey, type LanguageKey} from "@lib/tts/localization/lang";
 import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";

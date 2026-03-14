@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-function assertIsString(maybeString: any): string | never {
+function assertIsString(maybeString: unknown): string | never {
   if (typeof maybeString == "string") {
     return maybeString;
   }

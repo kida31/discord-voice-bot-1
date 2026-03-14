@@ -1,5 +1,5 @@
 import googleTTS from "google-tts-api";
-import {Payload} from "../tts-stuff";
+import {Payload} from "../types";
 import type {TTSProvider} from "@lib/tts/audio-provider/type";
 import type {Subtag} from "@lib/tts/localization/lang";
 

@@ -1,4 +1,4 @@
-import type {Payload} from "@lib/tts/tts-stuff";
+import type {Payload} from "@lib/tts/types";
 
 /**
  * Generic Interface for Audio Provider with minimal functionality.
