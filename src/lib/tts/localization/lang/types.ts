@@ -4,7 +4,7 @@ export type LanguageInfo = {
     en_name: string;
     emoji?: string;
     description?: string;
-}
+};
 
 /** Common languages with BCP47 subtags, e.g. "en" for English, "de" for German, "ja" for Japanese, etc. */
-export type StandardLanguage = LanguageInfo & { subtag: string; }
+export type StandardLanguage = LanguageInfo & { subtag: string };

@@ -1,8 +1,7 @@
-import * as GuildVCAnnouncer from "@lib/tts/GuildVoiceChannelAnnouncer";
+import {handleVoiceStateUpdate as handleTTS} from "@lib/tts";
 import {VoiceState} from "discord.js";
-import {translate} from "@lib/tts/localization/text";
 
-export default async function voiceStateUpdateListener(
+async function voiceStateUpdateListener(
     oldState: VoiceState,
     newState: VoiceState,
 ) {
@@ -22,26 +21,7 @@ export default async function voiceStateUpdateListener(
         }
     }
 
-    GuildVCAnnouncer.handleVoiceStateUpdate(oldState, newState);
+    handleTTS(oldState, newState);
 }
 
-
-export async function announceSelfMuteChange(
-    state: VoiceState,
-    isMuted: boolean,
-): Promise<void> {
-    if (!state.guild.id || !state.member) return;
-
-    const announcer = GuildVCAnnouncer.getAnnouncer(state.guild.id);
-    if (!announcer) return;
-
-    const memberName =
-        state.member.nickname ?? state.member.user.displayName ?? "User";
-    const textLang = GuildVCAnnouncer.getGuildTextLanguage(state.guild.id);
-
-    const message = isMuted
-        ? translate(textLang, "muted", memberName)
-        : translate(textLang, "unmuted", memberName)
-
-    await announcer.play(message);
-}
+export default voiceStateUpdateListener;

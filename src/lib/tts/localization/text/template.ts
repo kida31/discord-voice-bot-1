@@ -1,20 +1,21 @@
-import type {LanguageKey} from "@lib/tts/localization/lang";
+import type { LanguageKey } from "@lib/tts/localization/lang";
+import type { SupportedLanguageKey } from ".";
 
 export type TextEventTypeThingie = "join" | "leave" | "muted" | "unmuted";
-export type TemplateMapping = { [key in TextEventTypeThingie]?: string } & { name: string }
-export type LanguageTemplateMapping = { [key in LanguageKey]?: TemplateMapping }
+export type TemplateMapping = { [key in TextEventTypeThingie]?: string } & { name: string };
+export type LanguageTemplateMapping = { [key in LanguageKey]?: TemplateMapping };
 
 // Template of the form "Hello {0}, welcome to {1}!" where {0} and {1} are placeholders for parameters.
 export function fillTemplate(template: string, ...params: string[]): string {
     return template.replace(/{(\d+)}/g, (_, index: number) => {
-        if (typeof params[index] === 'undefined') {
+        if (typeof params[index] === "undefined") {
             throw new Error(`Missing parameter for placeholder {${index}} in template: "${template}"`);
         }
         return params[index];
     });
 }
 
-export function getTemplate(templates: LanguageTemplateMapping, lang: LanguageKey, type: TextEventTypeThingie): string {
+export function getTemplate(templates: LanguageTemplateMapping, lang: SupportedLanguageKey, type: TextEventTypeThingie): string {
     if (lang as keyof typeof templates) {
         const langTemplates = templates[lang as keyof typeof templates];
         if (langTemplates && type in langTemplates) {
