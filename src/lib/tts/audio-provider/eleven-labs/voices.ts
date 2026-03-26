@@ -2,10 +2,10 @@ import type {Voice, VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 
 export const VOICES = {
     "english_female": {
-        id: "eVItLK1UvXctxuaRV2Oq" as VoiceId,
-        name: "English Female",
+        id: "XJ2fW4ybq7HouelYYGcL" as VoiceId,
+        name: "English",
         compatibleLanguages: ["en"],
-        description: "English Female",
+        description: "English Female v2",
     } /* as const */,
     "german": {
         id: "xLCJR8xcZX2YjImGFyGw" as VoiceId,
@@ -33,7 +33,7 @@ export const VOICES = {
     },
     "oliver": {
         id: "fQV5Nz63N4V4PWc9zMpt" as VoiceId,
-        name: "Oliver",
+        name: "E-Sportler #1",
         compatibleLanguages: ["de"],
         description: "Der Allerbeste"
     },
