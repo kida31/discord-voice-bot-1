@@ -30,10 +30,14 @@ import {
  */
 
 const DASHBOARD_URL =
-    "http://localhost:5173";
+    process.env["DASHBOARD_URL"]
+    ?? "http://localhost:5173";
 
 const SESSION_COOKIE =
     "lfants_session";
+
+const USE_SECURE_COOKIES =
+    DASHBOARD_URL.startsWith("https://");
 
 const SESSION_MAX_AGE_SECONDS =
     60 * 60 * 24 * 7;
@@ -1041,7 +1045,7 @@ app.get<{
                 sameSite:
                     "lax",
                 secure:
-                    false,
+                    USE_SECURE_COOKIES,
                 path:
                     "/",
                 maxAge:
