@@ -18,7 +18,7 @@ import {type Guild, type VoiceBasedChannel} from "discord.js";
 import {Readable} from "stream";
 import {FIFOQueue} from "../common/FIFOQueue";
 import type {Payload, TTSPlayer} from "./types";
-import type {TTSProvider} from "@lib/tts/audio-provider";
+import type {TTSProvider, TTSRequestContext} from "@lib/tts/audio-provider";
 
 type PayloadWithResource = {
     payload: Payload;
@@ -101,7 +101,10 @@ export class TTSPlayerImpl implements TTSPlayer {
         return this.connection;
     }
 
-    async play(text: string) {
+    async play(
+        text: string,
+        context?: TTSRequestContext,
+    ) {
         if (
             !this.guild ||
             !this.channel ||
@@ -111,7 +114,11 @@ export class TTSPlayerImpl implements TTSPlayer {
             console.error("TTS Player not connected to a guild/channel");
             return;
         }
-        const payloads = await this.tts.createAudio(text);
+        const payloads = await this.tts.createAudio(
+            text,
+            undefined,
+            context,
+        );
 
         for (const payload of payloads) {
             // payload.resource ist ein Readable-Stream

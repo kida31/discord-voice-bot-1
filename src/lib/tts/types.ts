@@ -1,6 +1,6 @@
 import type {AudioPlayer, createAudioResource, VoiceConnection} from "@discordjs/voice";
 import {type Guild, type VoiceBasedChannel} from "discord.js";
-import type {TTSProvider} from "@lib/tts/audio-provider";
+import type {TTSProvider, TTSRequestContext} from "@lib/tts/audio-provider";
 
 export interface TTSPlayer {
     player: AudioPlayer;
@@ -12,7 +12,7 @@ export interface TTSPlayer {
 
     connect(options: { guild: Guild; channel: VoiceBasedChannel }): Promise<VoiceConnection>;
 
-    play(text: string): Promise<void>;
+    play(text: string, context?: TTSRequestContext): Promise<void>;
 
     destroy(): void;
 }

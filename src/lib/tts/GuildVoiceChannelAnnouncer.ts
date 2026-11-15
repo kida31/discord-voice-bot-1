@@ -13,7 +13,6 @@ import {
     type SupportedLanguageKey,
     translate,
 } from "@lib/tts/localization/text";
-import {voiceById} from "@lib/tts/audio-provider/eleven-labs/voices";
 import {
     ElevenLabsProvider,
     GoogleTranslateTTS,
@@ -136,6 +135,12 @@ async function onMemberDisconnect(
             "leave",
             getMemberNickname(oldState.member!),
         ),
+        {
+            guildId: oldState.guild.id,
+            userId: oldState.member!.id,
+            username: oldState.member!.user.username,
+            displayName: oldState.member!.displayName,
+        },
     );
 
     /*
@@ -181,6 +186,12 @@ async function onMemberConnect(
                 "join",
                 getMemberNickname(newState.member!),
             ),
+            {
+                guildId: newState.guild.id,
+                userId: newState.member!.id,
+                username: newState.member!.user.username,
+                displayName: newState.member!.displayName,
+            },
         );
     }
 }
@@ -212,41 +223,21 @@ function createTTSProvider(
     );
 
     if (config.elevenLabsVoiceId) {
-        const voice = voiceById(
-            config.elevenLabsVoiceId,
-        );
+    const language = langByKey(
+        config.voiceLanguage,
+    );
 
-        const language = langByKey(
-            config.voiceLanguage,
-        );
+    /*
+     * Voice and output language are intentionally independent.
+     * compatibleLanguages is advisory metadata only.
+     */
+    const languageCode = language.subtag;
 
-        const compatibleLanguages =
-            voice.compatibleLanguages ?? [];
-
-        const isLanguageValid =
-            compatibleLanguages.includes(language.subtag);
-
-        /*
-         * Use the configured language when it is supported by the
-         * selected voice. Otherwise use the first language supported
-         * by that voice.
-         */
-        const languageCode = isLanguageValid
-            ? language.subtag
-            : compatibleLanguages[0];
-
-        if (!languageCode) {
-            throw new Error(
-                `No compatible language found for ElevenLabs voice `
-                + `${config.elevenLabsVoiceId}`,
-            );
-        }
-
-        return new ElevenLabsProvider({
-            voiceId: config.elevenLabsVoiceId,
-            language_code: languageCode,
-        });
-    }
+    return new ElevenLabsProvider({
+        voiceId: config.elevenLabsVoiceId,
+        language_code: languageCode,
+    });
+}
 
     return new GoogleTranslateTTS({
         language: config.voiceLanguage,

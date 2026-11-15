@@ -5,7 +5,7 @@ import {Payload} from "../../types";
 import type {BCP47} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 import {VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
-import type {TTSProvider} from "@lib/tts/audio-provider";
+import type {TTSProvider, TTSRequestContext} from "@lib/tts/audio-provider";
 import {
     getOrCreateCachedAudio,
     type TTSAudioCacheKey,
@@ -391,6 +391,7 @@ export class ElevenLabsProvider implements TTSProvider {
         sentence: string,
         extras =
             ElevenLabsProvider.EXTRA_DEFAULTS,
+        context?: TTSRequestContext,
     ): Promise<Payload[]> {
         const languageCode =
             this.language_code;
@@ -454,6 +455,7 @@ export class ElevenLabsProvider implements TTSProvider {
                         },
                     ),
                 "ogg",
+                context,
             );
 
         return [
