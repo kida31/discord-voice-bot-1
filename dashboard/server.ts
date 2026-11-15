@@ -130,6 +130,7 @@ type Session = {
     user: DiscordUser;
     isAdmin: boolean;
     guildName: string | null;
+    guildIcon: string | null;
     createdAt: number;
 };
 
@@ -321,6 +322,26 @@ function getDiscordAvatarUrl(
     return (
         "https://cdn.discordapp.com/avatars/"
         + `${user.id}/${user.avatar}.png`
+        + "?size=128"
+    );
+}
+
+function getDiscordGuildIconUrl(
+    guildIdValue: string,
+    icon: string | null,
+): string | null {
+    if (!icon) {
+        return null;
+    }
+
+    const extension =
+        icon.startsWith("a_")
+            ? "gif"
+            : "png";
+
+    return (
+        "https://cdn.discordapp.com/icons/"
+        + `${guildIdValue}/${icon}.${extension}`
         + "?size=128"
     );
 }
@@ -904,6 +925,9 @@ app.get<{
                 guildName:
                     dashboardGuild?.name
                     ?? null,
+                guildIcon:
+                    dashboardGuild?.icon
+                    ?? null,
                 createdAt:
                     Date.now(),
             },
@@ -980,6 +1004,11 @@ app.get(
                     guildId,
                 name:
                     session.guildName,
+                iconUrl:
+                    getDiscordGuildIconUrl(
+                        guildId,
+                        session.guildIcon,
+                    ),
                 isMember:
                     session.guildName !==
                     null,

@@ -141,6 +141,18 @@ button {
   font-weight: 800;
 }
 
+.brand-icon.has-server-icon {
+  overflow: hidden;
+  background: #272a35;
+}
+
+.brand-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 .brand strong {
   display: block;
 

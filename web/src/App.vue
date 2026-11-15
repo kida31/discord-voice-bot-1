@@ -41,6 +41,7 @@ type DiscordUser = {
 type DiscordGuild = {
   id: string
   name: string | null
+  iconUrl: string | null
   isMember: boolean
   isAdmin: boolean
 }
@@ -1552,8 +1553,16 @@ onMounted(() => {
   <div class="dashboard">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-icon">
-          L
+        <div
+          class="brand-icon"
+          :class="{ 'has-server-icon': currentGuild?.iconUrl }"
+        >
+          <img
+            v-if="currentGuild?.iconUrl"
+            :src="currentGuild.iconUrl"
+            :alt="`${currentGuild.name ?? 'Discord-Server'} Servericon`"
+          />
+          <span v-else>L</span>
         </div>
 
         <div>
