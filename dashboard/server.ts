@@ -6,7 +6,7 @@ import Fastify, {
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import Database from "better-sqlite3";
-import {randomBytes} from "node:crypto";
+import {randomBytes, randomUUID} from "node:crypto";
 import {mkdir, readdir, readFile, stat, unlink} from "node:fs/promises";
 import {join} from "node:path";
 
@@ -40,6 +40,9 @@ const SESSION_MAX_AGE_SECONDS =
 
 const OAUTH_STATE_MAX_AGE_MS =
     10 * 60 * 1000;
+
+const dashboardStartedAt =
+    Date.now();
 
 const DISCORD_API_URL =
     "https://discord.com/api/v10";
@@ -163,6 +166,25 @@ type CacheDeleteBody = {
     all?: boolean;
 };
 
+type VoicePreviewBody = {
+    text?: string;
+    language?: string;
+};
+
+type AuditEventRow = {
+    id: string;
+    guild_id: string;
+    event_type: string;
+    category: string;
+    actor_user_id: string | null;
+    actor_username: string | null;
+    actor_display_name: string | null;
+    target_id: string | null;
+    target_name: string | null;
+    data_json: string | null;
+    created_at: string;
+};
+
 type CacheMetadata = {
     cacheId?: string;
     extension?: string;
@@ -272,6 +294,79 @@ function requireAdminSession(
     }
 
     return session;
+}
+
+/* ==============================================================
+ * Audit log
+ * ==============================================================
+ */
+
+function withWritableDatabase<T>(callback: (database: Database.Database) => T): T {
+    const database = new Database(sqliteFile);
+    try {
+        database.pragma("journal_mode = WAL");
+        database.exec(`
+            CREATE TABLE IF NOT EXISTS dashboard_event_log (
+                id TEXT PRIMARY KEY,
+                guild_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                category TEXT NOT NULL,
+                actor_user_id TEXT,
+                actor_username TEXT,
+                actor_display_name TEXT,
+                target_id TEXT,
+                target_name TEXT,
+                data_json TEXT,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_dashboard_event_log_guild_created
+                ON dashboard_event_log (guild_id, created_at DESC);
+        `);
+        return callback(database);
+    } finally {
+        database.close();
+    }
+}
+
+function writeAuditEvent(options: {
+    session: Session;
+    eventType: string;
+    category: string;
+    targetId?: string | null;
+    targetName?: string | null;
+    data?: unknown;
+}): void {
+    withWritableDatabase((database) => {
+        database.prepare(`
+            INSERT INTO dashboard_event_log (
+                id, guild_id, event_type, category,
+                actor_user_id, actor_username, actor_display_name,
+                target_id, target_name, data_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            randomUUID(),
+            guildId,
+            options.eventType,
+            options.category,
+            options.session.user.id,
+            options.session.user.username,
+            options.session.user.global_name ?? options.session.user.username,
+            options.targetId ?? null,
+            options.targetName ?? null,
+            options.data === undefined ? null : JSON.stringify(options.data),
+            new Date().toISOString(),
+        );
+    });
+}
+
+function readAuditEvents(limit = 100): AuditEventRow[] {
+    return withWritableDatabase((database) => database.prepare(`
+        SELECT *
+        FROM dashboard_event_log
+        WHERE guild_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+    `).all(guildId, Math.min(Math.max(limit, 1), 500)) as AuditEventRow[]);
 }
 
 /* ==============================================================
@@ -652,6 +747,10 @@ app.get(
                 "L-F-Ants Dashboard API",
             timestamp:
                 new Date().toISOString(),
+            startedAt:
+                new Date(dashboardStartedAt).toISOString(),
+            uptimeSeconds:
+                Math.floor((Date.now() - dashboardStartedAt) / 1000),
         };
     },
 );
@@ -1569,7 +1668,8 @@ app.get(
 app.delete<{Body: CacheDeleteBody}>(
     "/api/admin/cache",
     async (request, reply) => {
-        if (!requireAdminSession(request)) {
+        const session = requireAdminSession(request);
+        if (!session) {
             return reply.code(403).send({error: "Administrator permission required"});
         }
 
@@ -1596,7 +1696,158 @@ app.delete<{Body: CacheDeleteBody}>(
             await safelyUnlink(join(directory, `${id}.json`));
         }
 
+        writeAuditEvent({
+            session,
+            eventType: request.body?.all === true
+                ? "dashboard.cache.cleared"
+                : "dashboard.cache.deleted",
+            category: "cache",
+            data: {deleted, requestedIds: ids},
+        });
+
         return {success: true, deleted};
+    },
+);
+
+/* ==============================================================
+ * Dashboard status and audit log
+ * ==============================================================
+ */
+
+app.get(
+    "/api/status",
+    async (request, reply) => {
+        const session =
+            requireGuildMemberSession(request);
+
+        if (!session) {
+            return reply.code(403).send({error: "Guild membership required"});
+        }
+
+        const {entries} = await listCacheEntries();
+        const totalSizeBytes = entries.reduce((sum, entry) => sum + entry.sizeBytes, 0);
+        let memberCount: number | null = null;
+        let discordReachable = false;
+
+        try {
+            const discordResponse = await fetch(
+                `${DISCORD_API_URL}/guilds/${guildId}?with_counts=true`,
+                {headers: {Authorization: `Bot ${botToken}`}},
+            );
+            discordReachable = discordResponse.ok;
+            if (discordResponse.ok) {
+                const guild = await discordResponse.json() as {approximate_member_count?: number};
+                memberCount = guild.approximate_member_count ?? null;
+            }
+        } catch {
+            discordReachable = false;
+        }
+
+        return {
+            startedAt: new Date(dashboardStartedAt).toISOString(),
+            uptimeSeconds: Math.floor((Date.now() - dashboardStartedAt) / 1000),
+            discordReachable,
+            memberCount,
+            cache: {count: entries.length, totalSizeBytes},
+            recentEvents: session.isAdmin
+                ? readAuditEvents(5).map((row) => ({
+                    id: row.id,
+                    eventType: row.event_type,
+                    category: row.category,
+                    actorDisplayName: row.actor_display_name,
+                    targetName: row.target_name,
+                    createdAt: row.created_at,
+                }))
+                : [],
+        };
+    },
+);
+
+app.get<{Querystring: {limit?: string}}>(
+    "/api/admin/events",
+    async (request, reply) => {
+        if (!requireAdminSession(request)) {
+            return reply.code(403).send({error: "Administrator permission required"});
+        }
+        const parsed = Number.parseInt(request.query.limit ?? "100", 10);
+        const rows = readAuditEvents(Number.isFinite(parsed) ? parsed : 100);
+        return {
+            events: rows.map((row) => ({
+                id: row.id,
+                eventType: row.event_type,
+                category: row.category,
+                actorUserId: row.actor_user_id,
+                actorUsername: row.actor_username,
+                actorDisplayName: row.actor_display_name,
+                targetId: row.target_id,
+                targetName: row.target_name,
+                data: row.data_json ? JSON.parse(row.data_json) : null,
+                createdAt: row.created_at,
+            })),
+        };
+    },
+);
+
+app.post<{
+    Params: {voiceId: string};
+    Body: VoicePreviewBody;
+}>(
+    "/api/admin/voices/:voiceId/preview",
+    async (request, reply) => {
+        const session = requireAdminSession(request);
+        if (!session) {
+            return reply.code(403).send({error: "Administrator permission required"});
+        }
+
+        const voice = Object.values(VOICES).find((entry) => entry.id === request.params.voiceId);
+        if (!voice) {
+            return reply.code(404).send({error: "Voice not found"});
+        }
+
+        const apiKey = process.env["ELEVENLABS_API_KEY"];
+        if (!apiKey) {
+            return reply.code(503).send({error: "ElevenLabs API key is not configured"});
+        }
+
+        const text = request.body?.text?.trim()
+            || "Hallo! So klingt diese Stimme im L-F-Ants TTS-Bot.";
+        if (text.length > 300) {
+            return reply.code(400).send({error: "Preview text must not exceed 300 characters"});
+        }
+
+        const language = request.body?.language?.trim() || undefined;
+        const response = await fetch(
+            `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice.id)}?output_format=mp3_44100_128`,
+            {
+                method: "POST",
+                headers: {
+                    "xi-api-key": apiKey,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    text,
+                    model_id: "eleven_v4_turbo",
+                    ...(language ? {language_code: language.split("-")[0]} : {}),
+                }),
+            },
+        );
+
+        if (!response.ok) {
+            request.log.error({status: response.status, body: await response.text()}, "Voice preview failed");
+            return reply.code(502).send({error: "Voice preview generation failed"});
+        }
+
+        writeAuditEvent({
+            session,
+            eventType: "dashboard.voice.previewed",
+            category: "voice",
+            targetId: voice.id,
+            targetName: voice.name,
+            data: {language: language ?? null, textLength: text.length},
+        });
+
+        const audio = Buffer.from(await response.arrayBuffer());
+        return reply.type("audio/mpeg").send(audio);
     },
 );
 

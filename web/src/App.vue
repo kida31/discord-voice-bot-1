@@ -8,6 +8,7 @@ type NavigationItem =
   | "voices"
   | "languages"
   | "cache"
+  | "logs"
 
 type MemberFilter =
   | "all"
@@ -29,6 +30,30 @@ type HealthResponse = {
   status: string
   service: string
   timestamp: string
+  startedAt: string
+  uptimeSeconds: number
+}
+
+type DashboardStatusResponse = {
+  startedAt: string
+  uptimeSeconds: number
+  discordReachable: boolean
+  memberCount: number | null
+  cache: {count: number; totalSizeBytes: number}
+  recentEvents: AuditEvent[]
+}
+
+type AuditEvent = {
+  id: string
+  eventType: string
+  category: string
+  actorUserId?: string | null
+  actorUsername?: string | null
+  actorDisplayName: string | null
+  targetId?: string | null
+  targetName: string | null
+  data?: unknown
+  createdAt: string
 }
 
 type DiscordUser = {
@@ -153,6 +178,12 @@ const activePage = ref<NavigationItem>("overview")
 
 const backendOnline = ref(false)
 const backendLoading = ref(true)
+const dashboardUptime = ref(0)
+const discordReachable = ref(false)
+const serverMemberCount = ref<number | null>(null)
+const overviewCacheCount = ref(0)
+const overviewCacheSize = ref(0)
+const recentAuditEvents = ref<AuditEvent[]>([])
 
 const currentUser = ref<DiscordUser | null>(null)
 const currentGuild = ref<DiscordGuild | null>(null)
@@ -207,6 +238,31 @@ const cacheOldestAt = ref<string | null>(null)
 const cacheNewestAt = ref<string | null>(null)
 const selectedCacheIds = ref<Set<string>>(new Set())
 const cacheSearch = ref("")
+const cacheUserFilter = ref("all")
+const cacheVoiceFilter = ref("all")
+const cacheLanguageFilter = ref("all")
+const cacheSort = ref("recent")
+
+const auditEvents = ref<AuditEvent[]>([])
+const auditLoading = ref(false)
+const auditLoaded = ref(false)
+const auditError = ref("")
+const auditSearch = ref("")
+
+const previewTexts: Record<string, string> = {
+  de: "Hallo! So klingt diese Stimme im L-F-Ants TTS-Bot.",
+  en: "Hello! This is what this voice sounds like in the L-F-Ants TTS bot.",
+  ja: "こんにちは！L-F-Ants TTSボットでは、この音声はこのように聞こえます。",
+  vi: "Xin chào! Đây là giọng nói này trong bot TTS L-F-Ants.",
+  ko: "안녕하세요! L-F-Ants TTS 봇에서 이 목소리는 이렇게 들립니다.",
+}
+
+const previewLanguage = ref("en")
+const previewText = ref(previewTexts.en ?? "")
+const previewVoiceId = ref<string | null>(null)
+const previewLoadingVoiceId = ref<string | null>(null)
+const previewError = ref("")
+const previewAudioUrl = ref<string | null>(null)
 
 const navigation: NavigationEntry[] = [
   {
@@ -235,6 +291,11 @@ const navigation: NavigationEntry[] = [
   {
     id: "cache",
     label: "TTS Cache",
+    admin: true,
+  },
+  {
+    id: "logs",
+    label: "Audit Log",
     admin: true,
   },
 ]
@@ -568,19 +629,54 @@ const filteredVoices = computed(() => {
   })
 })
 
+const availableCacheUsers = computed(() => {
+  const users = new Map<string, string>()
+  for (const entry of cacheEntries.value) {
+    for (const user of entry.users) users.set(user.userId, user.displayName)
+  }
+  return [...users.entries()].sort((a, b) => a[1].localeCompare(b[1], "de"))
+})
+
+const availableCacheVoices = computed(() => [...new Set(cacheEntries.value.map((entry) => entry.voiceId).filter(Boolean) as string[])].sort())
+const availableCacheLanguages = computed(() => [...new Set(cacheEntries.value.map((entry) => entry.language).filter(Boolean) as string[])].sort())
+
 const filteredCacheEntries = computed(() => {
   const search = cacheSearch.value.trim().toLocaleLowerCase("de")
-  if (!search) {
-    return cacheEntries.value
-  }
-  return cacheEntries.value.filter((entry) =>
-    (entry.sentence ?? "").toLocaleLowerCase("de").includes(search) ||
-    (entry.language ?? "").toLocaleLowerCase("de").includes(search) ||
-    (entry.voiceId ?? "").toLocaleLowerCase("de").includes(search) ||
-    entry.users.some((user) =>
-      user.displayName.toLocaleLowerCase("de").includes(search) ||
-      user.username.toLocaleLowerCase("de").includes(search)
-    )
+  let result = cacheEntries.value.filter((entry) => {
+    if (cacheUserFilter.value !== "all" && !entry.users.some((user) => user.userId === cacheUserFilter.value)) return false
+    if (cacheVoiceFilter.value !== "all" && entry.voiceId !== cacheVoiceFilter.value) return false
+    if (cacheLanguageFilter.value !== "all" && entry.language !== cacheLanguageFilter.value) return false
+    if (!search) return true
+    return (entry.sentence ?? "").toLocaleLowerCase("de").includes(search) ||
+      (entry.language ?? "").toLocaleLowerCase("de").includes(search) ||
+      (entry.voiceId ?? "").toLocaleLowerCase("de").includes(search) ||
+      entry.users.some((user) => user.displayName.toLocaleLowerCase("de").includes(search) || user.username.toLocaleLowerCase("de").includes(search))
+  })
+  result = [...result]
+  if (cacheSort.value === "oldest") result.sort((a, b) => a.lastUsedAt.localeCompare(b.lastUsedAt))
+  else if (cacheSort.value === "largest") result.sort((a, b) => b.sizeBytes - a.sizeBytes)
+  else if (cacheSort.value === "smallest") result.sort((a, b) => a.sizeBytes - b.sizeBytes)
+  else result.sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt))
+  return result
+})
+
+const configurationWarning = computed(() => {
+  if (!selectedVoice.value || !voiceLanguage.value) return null
+  const language = voiceLanguage.value.toLocaleLowerCase("de")
+  const compatible = selectedVoice.value.compatibleLanguages.map((value) => value.toLocaleLowerCase("de"))
+  return compatible.includes(language)
+    ? null
+    : `${selectedVoice.value.name} ist für ${selectedVoice.value.compatibleLanguages.map((value) => value.toUpperCase()).join(", ")} hinterlegt. Die konfigurierte Ausgabesprache ${voiceLanguage.value.toUpperCase()} bleibt trotzdem erlaubt.`
+})
+
+const filteredAuditEvents = computed(() => {
+  const search = auditSearch.value.trim().toLocaleLowerCase("de")
+  if (!search) return auditEvents.value
+  return auditEvents.value.filter((event) =>
+    event.eventType.toLocaleLowerCase("de").includes(search) ||
+    event.category.toLocaleLowerCase("de").includes(search) ||
+    (event.actorDisplayName ?? "").toLocaleLowerCase("de").includes(search) ||
+    (event.targetName ?? "").toLocaleLowerCase("de").includes(search)
   )
 })
 
@@ -788,6 +884,10 @@ async function selectPage(
   ) {
     await loadCache()
   }
+
+  if (page === "logs" && !auditLoaded.value && !auditLoading.value) {
+    await loadAuditEvents()
+  }
 }
 
 async function checkBackendHealth() {
@@ -905,6 +1005,7 @@ async function loadCurrentUser() {
       }
 
       await loadAlias()
+      await loadDashboardStatus()
 
       if (result.guild.isMember) {
         await Promise.all([
@@ -1416,6 +1517,13 @@ currentGuild.value?.isMember !== true
     voiceLanguage.value =
       result.voiceLanguage
 
+    if (result.voiceLanguage) {
+      previewLanguage.value = result.voiceLanguage
+      previewText.value =
+        previewTexts[result.voiceLanguage.toLocaleLowerCase("de")]
+        ?? previewText.value
+    }
+
     textLanguage.value =
       result.textLanguage
 
@@ -1435,6 +1543,77 @@ currentGuild.value?.isMember !== true
   } finally {
     configLoading.value = false
   }
+}
+
+async function loadDashboardStatus() {
+  if (!currentGuild.value?.isMember) return
+  try {
+    const response = await fetch(`${API_URL}/api/status`, {credentials: "include"})
+    if (!response.ok) return
+    const result = await response.json() as DashboardStatusResponse
+    dashboardUptime.value = result.uptimeSeconds
+    discordReachable.value = result.discordReachable
+    serverMemberCount.value = result.memberCount
+    overviewCacheCount.value = result.cache.count
+    overviewCacheSize.value = result.cache.totalSizeBytes
+    recentAuditEvents.value = result.recentEvents
+  } catch (error) {
+    console.error("Could not load dashboard status:", error)
+  }
+}
+
+async function loadAuditEvents(force = false) {
+  if (!currentGuild.value?.isAdmin || (auditLoaded.value && !force)) return
+  auditLoading.value = true
+  auditError.value = ""
+  try {
+    const response = await fetch(`${API_URL}/api/admin/events?limit=200`, {credentials: "include"})
+    if (!response.ok) throw new Error(`Events endpoint returned ${response.status}`)
+    const result = await response.json() as {events: AuditEvent[]}
+    auditEvents.value = result.events
+    auditLoaded.value = true
+  } catch (error) {
+    console.error("Could not load audit events:", error)
+    auditError.value = "Audit-Log konnte nicht geladen werden."
+  } finally {
+    auditLoading.value = false
+  }
+}
+
+function updatePreviewTextForLanguage() {
+  previewText.value =
+    previewTexts[previewLanguage.value.toLocaleLowerCase("de")]
+    ?? previewText.value
+}
+
+async function previewVoice(voice: AdminVoice) {
+  previewLoadingVoiceId.value = voice.id
+  previewError.value = ""
+  if (previewAudioUrl.value) URL.revokeObjectURL(previewAudioUrl.value)
+  previewAudioUrl.value = null
+  try {
+    const response = await fetch(`${API_URL}/api/admin/voices/${encodeURIComponent(voice.id)}/preview`, {
+      method: "POST",
+      credentials: "include",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: previewText.value, language: previewLanguage.value}),
+    })
+    if (!response.ok) throw new Error(`Preview endpoint returned ${response.status}`)
+    previewAudioUrl.value = URL.createObjectURL(await response.blob())
+    previewVoiceId.value = voice.id
+  } catch (error) {
+    console.error("Could not generate voice preview:", error)
+    previewError.value = "Vorschau konnte nicht erzeugt werden."
+  } finally {
+    previewLoadingVoiceId.value = null
+  }
+}
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return days > 0 ? `${days}d ${hours}h` : hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
 async function loadCache(force = false) {
@@ -1503,6 +1682,7 @@ async function deleteCache(ids?: string[], all = false) {
     if (!response.ok) throw new Error(`Cache deletion returned ${response.status}`)
     cacheLoaded.value = false
     await loadCache(true)
+    await Promise.all([loadDashboardStatus(), loadAuditEvents(true)])
     cacheMessage.value = all ? "Der TTS-Cache wurde geleert." : "Die ausgewählten Einträge wurden gelöscht."
   } catch (error) {
     console.error("Could not delete TTS cache:", error)
@@ -1730,6 +1910,23 @@ onMounted(() => {
               Persistenter Opus-Cache auf dem
               Bot-Server.
             </p>
+          </article>
+          <article class="card">
+            <div class="card-header"><span>Discord</span></div>
+            <strong class="metric">{{ discordReachable ? "Verbunden" : "Nicht erreichbar" }}</strong>
+            <p>{{ serverMemberCount ?? "?" }} Servermitglieder</p>
+          </article>
+
+          <article class="card">
+            <div class="card-header"><span>Backend Uptime</span></div>
+            <strong class="metric">{{ formatUptime(dashboardUptime) }}</strong>
+            <p>Seit letztem Dashboard-Start</p>
+          </article>
+
+          <article class="card">
+            <div class="card-header"><span>TTS Cache</span></div>
+            <strong class="metric">{{ overviewCacheCount }} Dateien</strong>
+            <p>{{ formatBytes(overviewCacheSize) }} belegt</p>
           </article>
         </div>
 
@@ -2360,6 +2557,36 @@ onMounted(() => {
             </div>
           </div>
 
+          <div v-if="configurationWarning" class="config-warning">
+            <strong>Hinweis zur Sprachkombination</strong>
+            <span>{{ configurationWarning }}</span>
+          </div>
+
+          <div class="voice-preview-box">
+            <div class="voice-preview-controls">
+              <label class="voice-preview-text-control" for="voice-preview-text">
+                <span>Vorschautext</span>
+                <textarea id="voice-preview-text" v-model="previewText" maxlength="300" rows="2"></textarea>
+              </label>
+
+              <label class="voice-preview-language-control" for="voice-preview-language">
+                <span>Vorschau-Sprache</span>
+                <select
+                  id="voice-preview-language"
+                  v-model="previewLanguage"
+                  @change="updatePreviewTextForLanguage"
+                >
+                  <option v-for="language in availableVoiceLanguages" :key="language" :value="language">
+                    {{ language.toUpperCase() }}
+                  </option>
+                </select>
+              </label>
+            </div>
+            <small>Beim Wechsel der Vorschau-Sprache wird auch der Beispieltext passend übersetzt. Der Text kann danach weiterhin frei bearbeitet werden. Die Serverkonfiguration wird nicht verändert und die Vorschau landet nicht im produktiven TTS-Cache.</small>
+            <audio v-if="previewAudioUrl" :src="previewAudioUrl" controls autoplay></audio>
+            <p v-if="previewError" class="form-message error">{{ previewError }}</p>
+          </div>
+
           <div class="voices-toolbar">
             <label
               class="voice-control voice-search"
@@ -2481,6 +2708,15 @@ onMounted(() => {
                   {{ language.toUpperCase() }}
                 </span>
               </div>
+
+              <button
+                type="button"
+                class="voice-preview-button"
+                :disabled="previewLoadingVoiceId !== null"
+                @click="previewVoice(voice)"
+              >
+                {{ previewLoadingVoiceId === voice.id ? "Erzeuge Vorschau..." : "▶ Vorschau" }}
+              </button>
 
               <div class="voice-id">
                 <span>
@@ -2628,8 +2864,12 @@ onMounted(() => {
           </div>
 
           <div class="cache-directory"><span>Verzeichnis</span><code>{{ cacheDirectory || "Wird geladen..." }}</code></div>
-          <div class="cache-toolbar">
+          <div class="cache-toolbar cache-toolbar-expanded">
             <input v-model="cacheSearch" type="search" placeholder="Text, User, Sprache oder Voice-ID suchen" />
+            <select v-model="cacheUserFilter"><option value="all">Alle Verwendungen</option><option v-for="user in availableCacheUsers" :key="user[0]" :value="user[0]">{{ user[1] }}</option></select>
+            <select v-model="cacheLanguageFilter"><option value="all">Alle Sprachen</option><option v-for="language in availableCacheLanguages" :key="language" :value="language">{{ language.toUpperCase() }}</option></select>
+            <select v-model="cacheVoiceFilter"><option value="all">Alle Voices</option><option v-for="voice in availableCacheVoices" :key="voice" :value="voice">{{ voice.slice(0, 12) }}</option></select>
+            <select v-model="cacheSort"><option value="recent">Zuletzt verwendet</option><option value="oldest">Älteste Nutzung</option><option value="largest">Größte zuerst</option><option value="smallest">Kleinste zuerst</option></select>
             <span>{{ filteredCacheEntries.length }} von {{ cacheEntries.length }} Einträgen</span>
           </div>
           <p v-if="cacheMessage" class="form-message success cache-feedback">{{ cacheMessage }}</p>
@@ -2650,14 +2890,35 @@ onMounted(() => {
                   <span>{{ formatDate(entry.lastUsedAt) }}</span>
                   <code>{{ entry.id.slice(0, 12) }}</code>
                 </div>
+                <span class="cache-used-by-label">Verwendet von</span>
                 <div class="cache-users">
-                  <span v-if="entry.users.length === 0">User unbekannt</span>
+                  <span v-if="entry.users.length === 0">Verwendung unbekannt (Legacy)</span>
                   <button v-for="user in entry.users" :key="`${entry.id}-${user.userId}`" type="button" @click="selectCacheByUser(user.userId)">
                     {{ user.displayName }} (@{{ user.username }})
                   </button>
                 </div>
               </div>
               <button type="button" class="member-delete-button" :disabled="cacheDeleting" @click="deleteCache([entry.id])">Löschen</button>
+            </article>
+          </div>
+        </article>
+      </section>
+
+      <section v-else-if="activePage === 'logs' && currentGuild?.isAdmin === true" class="content">
+        <article class="panel audit-panel">
+          <div class="audit-heading">
+            <div><p class="eyebrow">Administration</p><h2>Audit Log</h2><p class="description">Nachvollziehbare Dashboard-Aktionen. Voice-Join/Leave-Events können später denselben Event-Store verwenden.</p></div>
+            <button type="button" class="refresh-button" :disabled="auditLoading" @click="loadAuditEvents(true)">Aktualisieren</button>
+          </div>
+          <div class="audit-toolbar"><input v-model="auditSearch" type="search" placeholder="Aktion, Kategorie oder User suchen" /><span>{{ filteredAuditEvents.length }} Ereignisse</span></div>
+          <div v-if="auditLoading" class="voices-state">Audit-Log wird geladen...</div>
+          <div v-else-if="auditError" class="voices-state error">{{ auditError }}</div>
+          <div v-else-if="filteredAuditEvents.length === 0" class="voices-state">Noch keine Audit-Ereignisse vorhanden.</div>
+          <div v-else class="audit-list">
+            <article v-for="event in filteredAuditEvents" :key="event.id" class="audit-row">
+              <div><strong>{{ event.eventType }}</strong><span>{{ event.category }}</span></div>
+              <div><strong>{{ event.actorDisplayName ?? "System" }}</strong><span v-if="event.targetName">→ {{ event.targetName }}</span></div>
+              <time>{{ formatDate(event.createdAt) }}</time>
             </article>
           </div>
         </article>
