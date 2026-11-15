@@ -138,3 +138,13 @@ dist
 # I dont know what I do
 package-lock.json
 /.idea
+
+# SQLite database / runtime files
+database.db
+database.db-shm
+database.db-wal
+database.db-journal
+
+# Alternative SQLite extensions
+*.sqlite
+*.sqlite3
