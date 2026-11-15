@@ -175,6 +175,19 @@ type VoicePreviewBody = {
     language?: string;
 };
 
+type ProfilePreferences = {
+    announceEnabled: boolean;
+    announceJoin: boolean;
+    announceLeave: boolean;
+    announceMove: boolean;
+};
+
+type ProfilePreferencesBody = Partial<ProfilePreferences>;
+
+type AliasPreviewBody = {
+    alias?: string;
+};
+
 type AuditEventRow = {
     id: string;
     guild_id: string;
@@ -325,6 +338,16 @@ function withWritableDatabase<T>(callback: (database: Database.Database) => T): 
             );
             CREATE INDEX IF NOT EXISTS idx_dashboard_event_log_guild_created
                 ON dashboard_event_log (guild_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS dashboard_user_preferences (
+                guild_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                announce_enabled INTEGER NOT NULL DEFAULT 1,
+                announce_join INTEGER NOT NULL DEFAULT 1,
+                announce_leave INTEGER NOT NULL DEFAULT 1,
+                announce_move INTEGER NOT NULL DEFAULT 1,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (guild_id, user_id)
+            );
         `);
         return callback(database);
     } finally {
@@ -371,6 +394,41 @@ function readAuditEvents(limit = 100): AuditEventRow[] {
         ORDER BY created_at DESC
         LIMIT ?
     `).all(guildId, Math.min(Math.max(limit, 1), 500)) as AuditEventRow[]);
+}
+
+function getProfilePreferences(userId: string): ProfilePreferences {
+    return withWritableDatabase((database) => {
+        const row = database.prepare(`
+            SELECT announce_enabled, announce_join, announce_leave, announce_move
+            FROM dashboard_user_preferences
+            WHERE guild_id = ? AND user_id = ?
+        `).get(guildId, userId) as {
+            announce_enabled: number; announce_join: number;
+            announce_leave: number; announce_move: number;
+        } | undefined;
+        return {
+            announceEnabled: row?.announce_enabled !== 0,
+            announceJoin: row?.announce_join !== 0,
+            announceLeave: row?.announce_leave !== 0,
+            announceMove: row?.announce_move !== 0,
+        };
+    });
+}
+
+function saveProfilePreferences(userId: string, value: ProfilePreferences): void {
+    withWritableDatabase((database) => {
+        database.prepare(`
+            INSERT INTO dashboard_user_preferences (
+                guild_id, user_id, announce_enabled, announce_join, announce_leave, announce_move, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(guild_id, user_id) DO UPDATE SET
+                announce_enabled = excluded.announce_enabled,
+                announce_join = excluded.announce_join,
+                announce_leave = excluded.announce_leave,
+                announce_move = excluded.announce_move,
+                updated_at = excluded.updated_at
+        `).run(guildId, userId, value.announceEnabled ? 1 : 0, value.announceJoin ? 1 : 0, value.announceLeave ? 1 : 0, value.announceMove ? 1 : 0, new Date().toISOString());
+    });
 }
 
 /* ==============================================================
@@ -1280,6 +1338,72 @@ app.delete(
         };
     },
 );
+
+/* ==============================================================
+ * Current user's profile
+ * ==============================================================
+ */
+
+app.get("/api/me/profile", async (request, reply) => {
+    const session = requireGuildMemberSession(request);
+    if (!session) return reply.code(403).send({error: "Guild membership required"});
+    const {entries} = await listCacheEntries();
+    const ownEntries = entries.filter((entry) =>
+        entry.users.some((user) => user.guildId === guildId && user.userId === session.user.id)
+    );
+    return {
+        preferences: getProfilePreferences(session.user.id),
+        usage: {
+            count: ownEntries.length,
+            totalSizeBytes: ownEntries.reduce((sum, entry) => sum + entry.sizeBytes, 0),
+            lastUsedAt: ownEntries[0]?.lastUsedAt ?? null,
+            entries: ownEntries.slice(0, 8).map((entry) => ({
+                id: entry.id, sentence: entry.sentence, sizeBytes: entry.sizeBytes,
+                language: entry.language, voiceId: entry.voiceId, lastUsedAt: entry.lastUsedAt,
+            })),
+        },
+    };
+});
+
+app.put<{Body: ProfilePreferencesBody}>("/api/me/preferences", async (request, reply) => {
+    const session = requireGuildMemberSession(request);
+    if (!session) return reply.code(403).send({error: "Guild membership required"});
+    const current = getProfilePreferences(session.user.id);
+    const preferences: ProfilePreferences = {
+        announceEnabled: typeof request.body?.announceEnabled === "boolean" ? request.body.announceEnabled : current.announceEnabled,
+        announceJoin: typeof request.body?.announceJoin === "boolean" ? request.body.announceJoin : current.announceJoin,
+        announceLeave: typeof request.body?.announceLeave === "boolean" ? request.body.announceLeave : current.announceLeave,
+        announceMove: typeof request.body?.announceMove === "boolean" ? request.body.announceMove : current.announceMove,
+    };
+    saveProfilePreferences(session.user.id, preferences);
+    return {success: true, preferences};
+});
+
+app.post<{Body: AliasPreviewBody}>("/api/me/alias-preview", async (request, reply) => {
+    const session = requireGuildMemberSession(request);
+    if (!session) return reply.code(403).send({error: "Guild membership required"});
+    const config = getStoredGuildConfig();
+    const voiceId = typeof config?.elevenLabsVoiceId === "string" ? config.elevenLabsVoiceId.trim() : "";
+    const voice = Object.values(VOICES).find((entry) => entry.id === voiceId);
+    const apiKey = process.env["ELEVENLABS_API_KEY"];
+    if (!voice || !apiKey) return reply.code(503).send({error: "Voice preview unavailable"});
+    const spokenName = request.body?.alias?.trim() || session.user.global_name || session.user.username;
+    if (spokenName.length > ALIAS_MAX_LENGTH) return reply.code(400).send({error: "Alias too long"});
+    const language = typeof config?.voiceLanguage === "string" ? config.voiceLanguage : "en";
+    const text = language.toLowerCase().startsWith("de")
+        ? `${spokenName} ist dem Sprachkanal beigetreten.`
+        : `${spokenName} joined the voice channel.`;
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voice.id)}?output_format=mp3_44100_128`, {
+        method: "POST",
+        headers: {"xi-api-key": apiKey, "Content-Type": "application/json"},
+        body: JSON.stringify({text, model_id: "eleven_v4_turbo", language_code: language.split("-")[0]}),
+    });
+    if (!response.ok) {
+        request.log.error({status: response.status, body: await response.text()}, "Alias preview failed");
+        return reply.code(502).send({error: "Alias preview generation failed"});
+    }
+    return reply.type("audio/mpeg").send(Buffer.from(await response.arrayBuffer()));
+});
 
 /* ==============================================================
  * Admin member management

@@ -1982,3 +1982,56 @@ h2 {
 .auth-footer a:hover { color: #aeb5ff; text-decoration: underline; text-underline-offset: 3px; }
 .auth-footer-separator { color: #383d49; }
 @media (max-width: 520px) { .auth-footer { max-width: 92%; line-height: 1.6; } }
+
+
+/* ============================================================
+ * Profile v2
+ * ============================================================ */
+.profile-page { display: grid; gap: 18px; }
+.profile-hero { display: flex; align-items: center; justify-content: space-between; gap: 24px; background: linear-gradient(110deg, rgba(88,101,242,.1), transparent 48%), var(--surface); }
+.profile-identity { display: flex; align-items: center; gap: 16px; }
+.profile-avatar { width: 68px; height: 68px; flex: 0 0 auto; border: 2px solid rgba(88,101,242,.32); border-radius: 20px; object-fit: cover; background: #272a35; box-shadow: 0 14px 30px rgba(0,0,0,.22); }
+.profile-avatar-placeholder { display: grid; place-items: center; color: #b8bdca; font-size: 24px; font-weight: 800; }
+.profile-identity h2 { margin: 0; font-size: 25px; }
+.profile-username { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; }
+.profile-badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.profile-role-badge { padding: 5px 9px; border: 1px solid rgba(88,101,242,.25); border-radius: 999px; background: rgba(88,101,242,.09); color: #aeb5ff; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.profile-banner { padding: 12px 14px; border-radius: 10px; font-size: 12px; }
+.profile-banner.success { border: 1px solid rgba(59,165,93,.25); background: rgba(59,165,93,.08); color: #61c47e; }
+.profile-banner.error { border: 1px solid rgba(237,66,69,.25); background: rgba(237,66,69,.08); color: #f2787a; }
+.profile-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.profile-preferences-panel, .profile-usage-panel, .profile-account-panel { grid-column: 1 / -1; }
+.profile-preview-button { padding: 10px 14px; border: 1px solid rgba(88,101,242,.35); border-radius: 9px; background: rgba(88,101,242,.1); color: #aeb5ff; font-weight: 650; }
+.profile-preview-button:hover:not(:disabled) { background: rgba(88,101,242,.18); }
+.profile-audio { width: 100%; margin-top: 16px; }
+.profile-config-grid, .profile-stats, .profile-account-grid { display: grid; gap: 0; margin-top: 22px; border: 1px solid var(--border); border-radius: 11px; overflow: hidden; }
+.profile-config-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.profile-stats { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.profile-account-grid { grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom: 18px; }
+.profile-config-grid > div, .profile-stats > div, .profile-account-grid > div { padding: 17px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.profile-config-grid > div:nth-child(2n), .profile-stats > div:last-child, .profile-account-grid > div:last-child { border-right: 0; }
+.profile-config-grid > div:nth-last-child(-n+2) { border-bottom: 0; }
+.profile-stats > div, .profile-account-grid > div { border-bottom: 0; }
+.profile-config-grid span, .profile-stats span, .profile-account-grid span { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+.profile-config-grid strong, .profile-stats strong, .profile-account-grid strong { color: var(--text); font-size: 13px; }
+.profile-account-grid code { color: #afb6ff; overflow-wrap: anywhere; font-size: 11px; }
+.profile-connected { color: #61c47e !important; }
+.profile-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.preference-list { margin-top: 20px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.preference-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.preference-row:last-child { border-bottom: 0; }
+.preference-row:hover { background: rgba(255,255,255,.012); }
+.preference-row.disabled { opacity: .48; cursor: not-allowed; }
+.preference-row strong, .preference-row span { display: block; }
+.preference-row strong { color: var(--text); font-size: 13px; }
+.preference-row span { margin-top: 4px; color: var(--muted); font-size: 11px; }
+.preference-row input { width: 38px; height: 20px; accent-color: var(--accent); }
+.profile-note { margin: 13px 0 0; color: #777e8e; font-size: 10px; line-height: 1.5; }
+.profile-usage-list { margin-top: 18px; border-top: 1px solid var(--border); }
+.profile-usage-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+.profile-usage-row strong, .profile-usage-row span { display: block; }
+.profile-usage-row strong { max-width: 700px; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.profile-usage-row span, .profile-usage-row time { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.profile-empty { margin-top: 20px; padding: 24px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 12px; text-align: center; }
+@media (max-width: 850px) { .profile-layout { grid-template-columns: 1fr; } .profile-preferences-panel, .profile-usage-panel, .profile-account-panel { grid-column: auto; } .profile-stats, .profile-account-grid { grid-template-columns: 1fr; } .profile-stats > div, .profile-account-grid > div { border-right: 0; border-bottom: 1px solid var(--border); } .profile-stats > div:last-child, .profile-account-grid > div:last-child { border-bottom: 0; } }
+@media (max-width: 560px) { .profile-hero, .profile-section-heading, .profile-usage-row { align-items: stretch; flex-direction: column; } .profile-badges { justify-content: flex-start; } .profile-config-grid { grid-template-columns: 1fr; } .profile-config-grid > div { border-right: 0; border-bottom: 1px solid var(--border) !important; } .profile-config-grid > div:last-child { border-bottom: 0 !important; } }

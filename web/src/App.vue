@@ -97,6 +97,33 @@ type AliasUpdateResponse = {
   error?: string
 }
 
+type ProfilePreferences = {
+  announceEnabled: boolean
+  announceJoin: boolean
+  announceLeave: boolean
+  announceMove: boolean
+}
+
+type ProfileUsageEntry = {
+  id: string
+  sentence: string | null
+  sizeBytes: number
+  language: string | null
+  voiceId: string | null
+  lastUsedAt: string
+}
+
+type ProfileResponse = {
+  preferences: ProfilePreferences
+  usage: {
+    count: number
+    totalSizeBytes: number
+    lastUsedAt: string | null
+    entries: ProfileUsageEntry[]
+  }
+}
+
+
 type AdminMember = {
   id: string
   username: string
@@ -201,6 +228,23 @@ const aliasLoading = ref(false)
 const aliasSaving = ref(false)
 const aliasMessage = ref("")
 const aliasError = ref("")
+const profileLoading = ref(false)
+const profileSaving = ref(false)
+const profileError = ref("")
+const profileMessage = ref("")
+const profilePreferences = ref<ProfilePreferences>({
+  announceEnabled: true,
+  announceJoin: true,
+  announceLeave: true,
+  announceMove: true,
+})
+const profileUsageCount = ref(0)
+const profileUsageSize = ref(0)
+const profileLastUsedAt = ref<string | null>(null)
+const profileUsageEntries = ref<ProfileUsageEntry[]>([])
+const aliasPreviewLoading = ref(false)
+const aliasPreviewError = ref("")
+const aliasPreviewAudioUrl = ref<string | null>(null)
 
 const members = ref<AdminMember[]>([])
 const membersLoading = ref(false)
@@ -707,6 +751,27 @@ function resetAliasState() {
   aliasError.value = ""
 }
 
+function resetProfileState() {
+  profileLoading.value = false
+  profileSaving.value = false
+  profileError.value = ""
+  profileMessage.value = ""
+  profilePreferences.value = {
+    announceEnabled: true,
+    announceJoin: true,
+    announceLeave: true,
+    announceMove: true,
+  }
+  profileUsageCount.value = 0
+  profileUsageSize.value = 0
+  profileLastUsedAt.value = null
+  profileUsageEntries.value = []
+  aliasPreviewLoading.value = false
+  aliasPreviewError.value = ""
+  if (aliasPreviewAudioUrl.value) URL.revokeObjectURL(aliasPreviewAudioUrl.value)
+  aliasPreviewAudioUrl.value = null
+}
+
 function resetMemberFilters() {
   memberSearch.value = ""
   memberFilter.value = "all"
@@ -859,6 +924,10 @@ async function selectPage(
 
   activePage.value = page
 
+  if (page === "profile") {
+    await loadProfile()
+  }
+
   if (
     page === "members" &&
     !membersLoaded.value &&
@@ -970,6 +1039,73 @@ async function loadAlias() {
   }
 }
 
+async function loadProfile() {
+  if (!currentUser.value || profileLoading.value) return
+  profileLoading.value = true
+  profileError.value = ""
+  try {
+    const response = await fetch(`${API_URL}/api/me/profile`, {credentials: "include"})
+    if (!response.ok) throw new Error(`Profile endpoint returned ${response.status}`)
+    const result = await response.json() as ProfileResponse
+    profilePreferences.value = result.preferences
+    profileUsageCount.value = result.usage.count
+    profileUsageSize.value = result.usage.totalSizeBytes
+    profileLastUsedAt.value = result.usage.lastUsedAt
+    profileUsageEntries.value = result.usage.entries
+  } catch (error) {
+    console.error("Could not load profile:", error)
+    profileError.value = "Profildaten konnten nicht geladen werden."
+  } finally {
+    profileLoading.value = false
+  }
+}
+
+async function saveProfilePreferences() {
+  profileSaving.value = true
+  profileError.value = ""
+  profileMessage.value = ""
+  try {
+    const response = await fetch(`${API_URL}/api/me/preferences`, {
+      method: "PUT",
+      credentials: "include",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(profilePreferences.value),
+    })
+    if (!response.ok) throw new Error(`Preferences endpoint returned ${response.status}`)
+    const result = await response.json() as {preferences: ProfilePreferences}
+    profilePreferences.value = result.preferences
+    profileMessage.value = "Persönliche TTS-Einstellungen wurden gespeichert."
+  } catch (error) {
+    console.error("Could not save profile preferences:", error)
+    profileError.value = "Einstellungen konnten nicht gespeichert werden."
+  } finally {
+    profileSaving.value = false
+  }
+}
+
+async function previewAlias() {
+  const spokenName = alias.value.trim() || currentUser.value?.displayName || "Discord Mitglied"
+  aliasPreviewLoading.value = true
+  aliasPreviewError.value = ""
+  if (aliasPreviewAudioUrl.value) URL.revokeObjectURL(aliasPreviewAudioUrl.value)
+  aliasPreviewAudioUrl.value = null
+  try {
+    const response = await fetch(`${API_URL}/api/me/alias-preview`, {
+      method: "POST",
+      credentials: "include",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({alias: spokenName}),
+    })
+    if (!response.ok) throw new Error(`Alias preview returned ${response.status}`)
+    aliasPreviewAudioUrl.value = URL.createObjectURL(await response.blob())
+  } catch (error) {
+    console.error("Could not preview alias:", error)
+    aliasPreviewError.value = "Aussprachevorschau konnte nicht erzeugt werden."
+  } finally {
+    aliasPreviewLoading.value = false
+  }
+}
+
 async function loadPublicBranding() {
   try {
     const response = await fetch(`${API_URL}/api/public/branding`)
@@ -996,6 +1132,7 @@ async function loadCurrentUser() {
       currentGuild.value = null
       activePage.value = "overview"
       resetAliasState()
+      resetProfileState()
       resetMembersState()
       resetVoicesState()
       resetConfigState()
@@ -1021,7 +1158,7 @@ async function loadCurrentUser() {
       }
 
       await loadAlias()
-      await loadDashboardStatus()
+      await Promise.all([loadProfile(), loadDashboardStatus()])
 
       if (result.guild.isMember) {
         await Promise.all([
@@ -1034,6 +1171,7 @@ async function loadCurrentUser() {
       currentGuild.value = null
       activePage.value = "overview"
       resetAliasState()
+      resetProfileState()
       resetMembersState()
       resetVoicesState()
       resetConfigState()
@@ -1048,6 +1186,7 @@ async function loadCurrentUser() {
     currentGuild.value = null
     activePage.value = "overview"
     resetAliasState()
+    resetProfileState()
     resetMembersState()
     resetVoicesState()
     resetConfigState()
@@ -1732,6 +1871,7 @@ async function logout() {
     currentGuild.value = null
     activePage.value = "overview"
     resetAliasState()
+    resetProfileState()
     resetMembersState()
     resetVoicesState()
     resetConfigState()
@@ -2138,110 +2278,82 @@ onMounted(() => {
         </article>
       </section>
 
-      <section
-        v-else-if="activePage === 'profile'"
-        class="content"
-      >
-        <article class="panel narrow">
-          <p class="eyebrow">
-            Persönliche Einstellung
-          </p>
-
-          <h2>
-            Mein TTS-Alias
-          </h2>
-
-          <p class="description">
-            Dieser Name wird vom Bot bei
-            Voice-Ankündigungen ausgesprochen.
-          </p>
-
-          <div
-            v-if="aliasLoading"
-            class="profile-loading"
-          >
-            Alias wird geladen...
-          </div>
-
-          <template v-else>
-            <label
-              class="field"
-              for="alias"
-            >
-              <span>Alias</span>
-
-              <input
-                id="alias"
-                v-model="alias"
-                type="text"
-                :maxlength="aliasMaxLength"
-                :disabled="
-                  aliasSaving ||
-                  !currentUser
-                "
-                placeholder="Noch kein Alias gesetzt"
-                @keydown.enter.prevent="saveAlias"
-              />
-
-              <small class="field-hint">
-                {{ alias.length }}
-                /
-                {{ aliasMaxLength }}
-              </small>
-            </label>
-
-            <div class="form-actions">
-              <button
-                type="button"
-                class="primary-button"
-                :disabled="
-                  aliasSaving ||
-                  !currentUser
-                "
-                @click="saveAlias"
-              >
-                {{
-                  aliasSaving
-                    ? "Speichert..."
-                    : "Speichern"
-                }}
-              </button>
-
-              <button
-                v-if="alias"
-                type="button"
-                class="secondary-danger-button"
-                :disabled="aliasSaving"
-                @click="removeAlias"
-              >
-                Alias löschen
-              </button>
+      <section v-else-if="activePage === 'profile'" class="content profile-page">
+        <article class="profile-hero panel">
+          <div class="profile-identity">
+            <img v-if="currentUser?.avatarUrl" class="profile-avatar" :src="currentUser.avatarUrl" alt="Discord Avatar" />
+            <div v-else class="profile-avatar profile-avatar-placeholder">{{ currentUser?.displayName?.charAt(0).toUpperCase() ?? "?" }}</div>
+            <div>
+              <p class="eyebrow">Mein Profil</p>
+              <h2>{{ currentUser?.displayName }}</h2>
+              <span class="profile-username">@{{ currentUser?.username }}</span>
             </div>
-
-            <p
-              v-if="aliasMessage"
-              class="form-message success"
-            >
-              {{ aliasMessage }}
-            </p>
-
-            <p
-              v-if="aliasError"
-              class="form-message error"
-            >
-              {{ aliasError }}
-            </p>
-
-            <p
-              v-if="!currentUser"
-              class="form-message error"
-            >
-              Bitte melde dich zuerst mit Discord an.
-            </p>
-          </template>
+          </div>
+          <div class="profile-badges">
+            <span class="status online">Servermitglied</span>
+            <span class="profile-role-badge">{{ currentGuild?.isAdmin ? "Administrator" : "Mitglied" }}</span>
+          </div>
         </article>
-      </section>
 
+        <div v-if="profileError" class="profile-banner error">{{ profileError }}</div>
+        <div v-if="profileMessage" class="profile-banner success">{{ profileMessage }}</div>
+
+        <div class="profile-layout">
+          <article class="panel profile-alias-panel">
+            <p class="eyebrow">Persönliche Aussprache</p>
+            <h2>Mein TTS-Alias</h2>
+            <p class="description">Dieser Name wird bei deinen Voice-Ankündigungen ausgesprochen.</p>
+            <div v-if="aliasLoading" class="profile-loading">Alias wird geladen...</div>
+            <template v-else>
+              <label class="field" for="alias"><span>Gesprochener Name</span><input id="alias" v-model="alias" type="text" :maxlength="aliasMaxLength" :disabled="aliasSaving" placeholder="Noch kein Alias gesetzt" @keydown.enter.prevent="saveAlias" /><small class="field-hint">{{ alias.length }} / {{ aliasMaxLength }}</small></label>
+              <div class="form-actions">
+                <button type="button" class="primary-button" :disabled="aliasSaving" @click="saveAlias">{{ aliasSaving ? "Speichert..." : "Speichern" }}</button>
+                <button type="button" class="profile-preview-button" :disabled="aliasPreviewLoading" @click="previewAlias">{{ aliasPreviewLoading ? "Erzeuge Vorschau..." : "▶ Aussprache testen" }}</button>
+                <button v-if="alias" type="button" class="secondary-danger-button" :disabled="aliasSaving" @click="removeAlias">Alias löschen</button>
+              </div>
+              <audio v-if="aliasPreviewAudioUrl" class="profile-audio" :src="aliasPreviewAudioUrl" controls autoplay></audio>
+              <p v-if="aliasMessage" class="form-message success">{{ aliasMessage }}</p>
+              <p v-if="aliasError || aliasPreviewError" class="form-message error">{{ aliasError || aliasPreviewError }}</p>
+            </template>
+          </article>
+
+          <article class="panel profile-config-panel">
+            <p class="eyebrow">Aktuelle Serverkonfiguration</p>
+            <h2>So klingt dein Alias</h2>
+            <div class="profile-config-grid">
+              <div><span>Voice</span><strong>{{ selectedVoice?.name ?? "Nicht konfiguriert" }}</strong></div>
+              <div><span>Voice-Sprache</span><strong>{{ voiceLanguage?.toUpperCase() ?? "Nicht konfiguriert" }}</strong></div>
+              <div><span>Text-Sprache</span><strong>{{ textLanguage?.toUpperCase() ?? "Nicht konfiguriert" }}</strong></div>
+              <div><span>Provider</span><strong>ElevenLabs</strong></div>
+            </div>
+          </article>
+
+          <article class="panel profile-preferences-panel">
+            <div class="profile-section-heading"><div><p class="eyebrow">Meine TTS-Einstellungen</p><h2>Persönliche Ankündigungen</h2></div><button type="button" class="primary-button" :disabled="profileSaving" @click="saveProfilePreferences">{{ profileSaving ? "Speichert..." : "Speichern" }}</button></div>
+            <div class="preference-list">
+              <label class="preference-row"><div><strong>TTS für mich</strong><span>Steuert alle persönlichen Voice-Ankündigungen.</span></div><input v-model="profilePreferences.announceEnabled" type="checkbox" /></label>
+              <label class="preference-row" :class="{disabled: !profilePreferences.announceEnabled}"><div><strong>Beitritt ansagen</strong><span>Ansage, wenn du einem Voice-Channel beitrittst.</span></div><input v-model="profilePreferences.announceJoin" type="checkbox" :disabled="!profilePreferences.announceEnabled" /></label>
+              <label class="preference-row" :class="{disabled: !profilePreferences.announceEnabled}"><div><strong>Verlassen ansagen</strong><span>Ansage, wenn du einen Voice-Channel verlässt.</span></div><input v-model="profilePreferences.announceLeave" type="checkbox" :disabled="!profilePreferences.announceEnabled" /></label>
+              <label class="preference-row" :class="{disabled: !profilePreferences.announceEnabled}"><div><strong>Channel-Wechsel ansagen</strong><span>Ansage beim Wechsel zwischen Voice-Channels.</span></div><input v-model="profilePreferences.announceMove" type="checkbox" :disabled="!profilePreferences.announceEnabled" /></label>
+            </div>
+            <p class="profile-note">Die Einstellungen werden bereits gespeichert. Die Auswertung durch den Bot wird mit dem nächsten Bot-Integrationsschritt aktiviert.</p>
+          </article>
+
+          <article class="panel profile-usage-panel">
+            <p class="eyebrow">Meine TTS-Nutzung</p><h2>Persönliche Aktivität</h2>
+            <div class="profile-stats"><div><span>Cache-Einträge</span><strong>{{ profileUsageCount }}</strong></div><div><span>Speicher</span><strong>{{ formatBytes(profileUsageSize) }}</strong></div><div><span>Zuletzt verwendet</span><strong>{{ formatDate(profileLastUsedAt) }}</strong></div></div>
+            <div v-if="profileLoading" class="profile-loading">Profildaten werden geladen...</div>
+            <div v-else-if="profileUsageEntries.length === 0" class="profile-empty">Noch keine persönlichen TTS-Verwendungen vorhanden.</div>
+            <div v-else class="profile-usage-list"><div v-for="entry in profileUsageEntries" :key="entry.id" class="profile-usage-row"><div><strong>{{ entry.sentence ?? "Legacy-Cache ohne Textmetadaten" }}</strong><span>{{ entry.language?.toUpperCase() ?? "Sprache unbekannt" }} · {{ formatBytes(entry.sizeBytes) }}</span></div><time>{{ formatDate(entry.lastUsedAt) }}</time></div></div>
+          </article>
+
+          <article class="panel profile-account-panel">
+            <p class="eyebrow">Account</p><h2>Discord-Verbindung</h2>
+            <div class="profile-account-grid"><div><span>Discord-ID</span><code>{{ currentUser?.id }}</code></div><div><span>Session</span><strong class="profile-connected">Aktiv</strong></div><div><span>Zugriff</span><strong>{{ currentGuild?.isAdmin ? "Administrator" : "Mitglied" }}</strong></div></div>
+            <button type="button" class="logout-button" @click="logout">Abmelden</button>
+          </article>
+        </div>
+      </section>
       <section
         v-else-if="
           activePage === 'members' &&
