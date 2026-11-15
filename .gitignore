@@ -148,3 +148,6 @@ database.db-journal
 # Alternative SQLite extensions
 *.sqlite
 *.sqlite3
+
+# Generated TTS audio cache
+/cache/
