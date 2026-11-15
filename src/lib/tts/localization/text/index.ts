@@ -1,4 +1,3 @@
-import type {LanguageKey} from "@lib/tts/localization/lang";
 import {fillTemplate, getTemplate, type LanguageTemplateMapping, type TextEventTypeThingie} from "./template";
 import standardTemplates from "@lib/tts/localization/text/data/standard";
 import variantsTemplates from "@lib/tts/localization/text/data/variants";
@@ -18,7 +17,11 @@ export type SupportedLanguageKey = typeof SUPPORTED_TEXT_LANGUAGE_KEYS[number];
 
 // ---- Helper functions ----
 
-export function translate(lang: LanguageKey, type: TextEventTypeThingie, ...params: string[]): string {
+export function translate(
+    lang: SupportedLanguageKey,
+    type: TextEventTypeThingie,
+    ...params: string[]
+): string {
     const template = getTemplate(textTemplates, lang, type);
     return fillTemplate(template, ...params);
 }

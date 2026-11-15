@@ -1,11 +1,18 @@
 import type {Guild} from "discord.js";
 import {PassThrough, Readable} from "stream";
 import {spawn} from "child_process";
+import ffmpegPath from "ffmpeg-static";
 import {Payload} from "../../types";
 import type {BCP47} from "@lib/tts/localization/lang";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
-import { VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
+import {VOICES} from "@lib/tts/audio-provider/eleven-labs/voices";
 import type {TTSProvider} from "@lib/tts/audio-provider";
+
+if (!ffmpegPath) {
+    throw new Error("ffmpeg-static did not provide an FFmpeg binary");
+}
+
+const FFMPEG_PATH: string = ffmpegPath;
 
 type ElevenVoiceSettings = {
     stability?: number;
@@ -30,7 +37,7 @@ export class ElevenLabsProvider implements TTSProvider {
 
     static EXTRA_DEFAULTS = {
         language: "en-US" satisfies BCP47 as BCP47,
-        model: "eleven_turbo_v2_5", //alternative "eleven_multilingual_v2" but VN not working with it 
+        model: "eleven_v4_turbo", //alternative "eleven_multilingual_v2" but VN not working with it
         voiceId: DEFAULT_VOICE_ID,
         stability: 0.6, // 0.0 (more random) bis 1.0 (more stable)
         similarityBoost: 0.9, // 0.0 (less similar) bis 1.0 (more similar)
@@ -45,16 +52,20 @@ export class ElevenLabsProvider implements TTSProvider {
 
     constructor(config?: {
         apiKey?: string;
-        language_code?: BCP47
+        language_code?: BCP47;
         voiceId?: VoiceId;
     }) {
         this.apiKey = config?.apiKey ?? process.env["ELEVENLABS_API_KEY"] ?? "";
+
         if (!this.apiKey) {
             throw new Error("Missing ELEVENLABS_API_KEY");
         }
 
-        this.language_code = config?.language_code ?? ElevenLabsProvider.EXTRA_DEFAULTS.language;
-        this.voiceId = config?.voiceId ?? DEFAULT_VOICE_ID;
+        this.language_code =
+            config?.language_code ?? ElevenLabsProvider.EXTRA_DEFAULTS.language;
+
+        this.voiceId =
+            config?.voiceId ?? DEFAULT_VOICE_ID;
     }
 
     private static looksLikeOgg(buf: Uint8Array): boolean {
@@ -67,10 +78,17 @@ export class ElevenLabsProvider implements TTSProvider {
 
     private static looksLikeMp3(buf: Uint8Array): boolean {
         if (buf.length < 3) return false;
-        if (buf[1] === undefined) return false; // k added this: is this correct?
+        if (buf[1] === undefined) return false;
 
-        const id3 = buf[0] === 0x49 && buf[1] === 0x44 && buf[2] === 0x33;
-        const frameSync = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+        const id3 =
+            buf[0] === 0x49 &&
+            buf[1] === 0x44 &&
+            buf[2] === 0x33;
+
+        const frameSync =
+            buf[0] === 0xff &&
+            (buf[1] & 0xe0) === 0xe0;
+
         return id3 || frameSync;
     }
 
@@ -94,12 +112,13 @@ export class ElevenLabsProvider implements TTSProvider {
             use_speaker_boost: extras.speakerBoost ?? true,
         };
 
-        const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+        const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`
+        + `?output_format=${encodeURIComponent(outputFormat)}`;
+
         const body = {
             text: sentence,
             model_id: model,
             voice_settings,
-            output_format: outputFormat,
             ...(language_code ? {language_code} : {}),
         };
 
@@ -115,41 +134,72 @@ export class ElevenLabsProvider implements TTSProvider {
 
         if (!res.ok || !res.body) {
             const text = await res.text().catch(() => "");
-            throw new Error(`ElevenLabs TTS failed: HTTP ${res.status} – ${text}`);
+
+            throw new Error(
+                `ElevenLabs TTS failed: HTTP ${res.status} - ${text}`
+            );
         }
 
-        const contentType = res.headers.get("content-type") ?? "";
-        console.log(`[ElevenLabs] content-type: ${contentType}`);
+        const contentType =
+            res.headers.get("content-type") ?? "";
+
+        console.log(
+            `[ElevenLabs] content-type: ${contentType}`
+        );
 
         const reader = res.body.getReader();
+
         const peekChunks: Uint8Array[] = [];
+
         let received = 0;
 
         while (received < 65536) {
             const {value, done} = await reader.read();
+
             if (done) break;
+
             if (value) {
                 peekChunks.push(value);
                 received += value.length;
+
                 if (received >= 4) break;
             }
         }
 
-        const first = peekChunks[0] ?? new Uint8Array(0);
-        const isOgg = ElevenLabsProvider.looksLikeOgg(first);
-        const isMp3 = ElevenLabsProvider.looksLikeMp3(first);
-        const expectedOpus = outputFormat.startsWith("opus_48000");
+        const first =
+            peekChunks[0] ?? new Uint8Array(0);
 
+        const isOgg =
+            ElevenLabsProvider.looksLikeOgg(first);
+
+        const isMp3 =
+            ElevenLabsProvider.looksLikeMp3(first);
+
+        const expectedOpus =
+            outputFormat.startsWith("opus_48000");
+
+        /*
+         * ElevenLabs already returned an OGG container.
+         * In this case FFmpeg isn't necessary.
+         */
         if (isOgg) {
             const pass = new PassThrough();
-            for (const c of peekChunks) pass.write(Buffer.from(c));
+
+            for (const c of peekChunks) {
+                pass.write(Buffer.from(c));
+            }
 
             (async () => {
-                for (; ;) {
+                for (;;) {
                     const {value, done} = await reader.read();
+
                     if (done) break;
-                    if (value) pass.write(Buffer.from(value));
+
+                    if (value) {
+                        pass.write(Buffer.from(value));
+                    }
                 }
+
                 pass.end();
             })();
 
@@ -171,7 +221,13 @@ export class ElevenLabsProvider implements TTSProvider {
             ];
         }
 
-        const remuxArgs = ["-i", "pipe:0", "-f", "ogg", "-c:a", "copy", "pipe:1"];
+        const remuxArgs = [
+            "-i", "pipe:0",
+            "-f", "ogg",
+            "-c:a", "copy",
+            "pipe:1",
+        ];
+
         const transcodeArgs = [
             "-i", "pipe:0",
             "-f", "ogg",
@@ -182,8 +238,12 @@ export class ElevenLabsProvider implements TTSProvider {
             "pipe:1",
         ];
 
+        /*
+         * Use the FFmpeg binary supplied by ffmpeg-static instead
+         * of relying on a system-wide FFmpeg installation.
+         */
         let ffmpeg = spawn(
-            "ffmpeg",
+            FFMPEG_PATH,
             isMp3 || contentType.includes("mpeg")
                 ? transcodeArgs
                 : expectedOpus
@@ -195,39 +255,71 @@ export class ElevenLabsProvider implements TTSProvider {
 
         ffmpeg.stderr.on("data", (d) => {
             const msg = d.toString();
+
             console.error("[FFmpeg]", msg);
 
-            if (!retried && /Unsupported codec|Invalid argument|write header/.test(msg)) {
+            if (
+                !retried &&
+                /Unsupported codec|Invalid argument|write header/.test(msg)
+            ) {
                 retried = true;
+
                 try {
                     ffmpeg.kill("SIGKILL");
                 } catch {
                     // ignore
                 }
 
-                ffmpeg = spawn("ffmpeg", transcodeArgs);
+                ffmpeg = spawn(
+                    FFMPEG_PATH,
+                    transcodeArgs
+                );
 
-                for (const c of peekChunks) ffmpeg.stdin.write(Buffer.from(c));
+                for (const c of peekChunks) {
+                    ffmpeg.stdin.write(
+                        Buffer.from(c)
+                    );
+                }
 
                 (async () => {
-                    for (; ;) {
-                        const {value, done} = await reader.read();
+                    for (;;) {
+                        const {value, done} =
+                            await reader.read();
+
                         if (done) break;
-                        if (value) ffmpeg.stdin.write(Buffer.from(value));
+
+                        if (value) {
+                            ffmpeg.stdin.write(
+                                Buffer.from(value)
+                            );
+                        }
                     }
+
                     ffmpeg.stdin.end();
                 })();
             }
         });
 
-        for (const c of peekChunks) ffmpeg.stdin.write(Buffer.from(c));
+        for (const c of peekChunks) {
+            ffmpeg.stdin.write(
+                Buffer.from(c)
+            );
+        }
 
         (async () => {
-            for (; ;) {
-                const {value, done} = await reader.read();
+            for (;;) {
+                const {value, done} =
+                    await reader.read();
+
                 if (done) break;
-                if (value) ffmpeg.stdin.write(Buffer.from(value));
+
+                if (value) {
+                    ffmpeg.stdin.write(
+                        Buffer.from(value)
+                    );
+                }
             }
+
             ffmpeg.stdin.end();
         })();
 
@@ -255,10 +347,21 @@ export class ElevenLabsProvider implements TTSProvider {
         ];
     }
 
-    getPlayLogMessage(payload: Payload, guild: Guild) {
+    getPlayLogMessage(
+        payload: Payload,
+        guild: Guild
+    ) {
         const {
             sentence,
-            extras: {language, model, voiceId, outputFormat, container, codec, note},
+            extras: {
+                language,
+                model,
+                voiceId,
+                outputFormat,
+                container,
+                codec,
+                note
+            },
         } = payload;
 
         return `(ElevenLabs): Saying "${sentence}" with model ${model} `

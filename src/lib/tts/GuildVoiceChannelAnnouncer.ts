@@ -1,12 +1,27 @@
-import {Collection, type Guild, GuildMember, type VoiceBasedChannel, VoiceState,} from "discord.js";
+import {
+    Collection,
+    type Guild,
+    GuildMember,
+    type VoiceBasedChannel,
+    VoiceState,
+} from "discord.js";
 import {TTSPlayerImpl} from "./TTSAudioPlayer";
 import type {TTSPlayer} from "./types";
 import {VoiceConnectionStatus} from "@discordjs/voice";
 import {langByKey, type LanguageKey} from "@lib/tts/localization/lang";
-import {type SupportedLanguageKey, translate} from "@lib/tts/localization/text";
+import {
+    type SupportedLanguageKey,
+    translate,
+} from "@lib/tts/localization/text";
 import {voiceById} from "@lib/tts/audio-provider/eleven-labs/voices";
-import {ElevenLabsProvider, GoogleTranslateTTS} from "@lib/tts/audio-provider";
-import {type GuildAnnouncerConfig, GuildAnnouncerConfigRepository} from "@lib/persist/GuildAnnouncerConfigRepository";
+import {
+    ElevenLabsProvider,
+    GoogleTranslateTTS,
+} from "@lib/tts/audio-provider";
+import {
+    type GuildAnnouncerConfig,
+    GuildAnnouncerConfigRepository,
+} from "@lib/persist/GuildAnnouncerConfigRepository";
 import type {VoiceId} from "@lib/tts/audio-provider/eleven-labs/type";
 
 type GuildVoiceChannelAnnouncer = TTSPlayer;
@@ -20,14 +35,20 @@ type VoiceStateWithChannel = VoiceState & {
     channel: Exclude<VoiceState["channel"], null>;
 };
 
-/** Tracks guild. Will automatically spawn and despawn announcer when someone joins a channel */
+/**
+ * Tracks a guild.
+ * Automatically creates and destroys the announcer when members
+ * join or leave a voice channel.
+ */
 export function subscribeToGuild(guildId: Guild["id"]) {
     guildAnnouncerCache.set(guildId, null);
+
     return () => getAnnouncer(guildId);
 }
 
 export function unsubscribeFromGuild(guildId: Guild["id"]) {
     const announcer = guildAnnouncerCache.get(guildId);
+
     guildAnnouncerCache.delete(guildId);
     announcer?.destroy();
 }
@@ -43,79 +64,123 @@ export async function handleVoiceStateUpdate(
     newState: VoiceState,
 ) {
     const member = oldState.member ?? newState.member;
-    if (!member?.guild.id || !guildAnnouncerCache.has(member.guild.id)) {
+
+    if (
+        !member?.guild.id ||
+        !guildAnnouncerCache.has(member.guild.id)
+    ) {
         console.log("Not a relevant guild or member");
         return;
     }
-    if (member.user.id == oldState.client.user.id) return; // ignore self
 
-    if (!member.user || member.user.bot) {
+    // Ignore voice-state updates produced by the bot itself.
+    if (member.user.id === oldState.client.user.id) {
+        return;
+    }
+
+    // Ignore other bots.
+    if (member.user.bot) {
         console.log("User is bot, ignore");
         return;
     }
 
     if (!hasChannel(oldState) && hasChannel(newState)) {
-        return onMemberConnect(newState);
-    } else if (!hasChannel(newState) && hasChannel(oldState)) {
-        return onMemberDisconnect(oldState);
-    } else if (hasChannel(oldState) && hasChannel(newState)) {
-        return onMemberChangedChannel(oldState, newState);
+        await onMemberConnect(newState);
+        return;
+    }
+
+    if (!hasChannel(newState) && hasChannel(oldState)) {
+        await onMemberDisconnect(oldState);
+        return;
+    }
+
+    if (hasChannel(oldState) && hasChannel(newState)) {
+        await onMemberChangedChannel(oldState, newState);
+        return;
     }
 
     console.error("Failed to handle voice state update");
 }
 
-function hasChannel(state: VoiceState): state is VoiceStateWithChannel {
-    return state.channel != null;
+function hasChannel(
+    state: VoiceState,
+): state is VoiceStateWithChannel {
+    return state.channel !== null;
 }
 
-async function onMemberDisconnect(oldState: VoiceStateWithChannel) {
+async function onMemberDisconnect(
+    oldState: VoiceStateWithChannel,
+) {
     console.log(
-        `${oldState.member?.user.displayName} left channel${oldState.channel.name}`,
+        `${oldState.member?.user.displayName} left channel ${oldState.channel.name}`,
     );
 
     const announcer = getAnnouncer(oldState.guild.id);
-    if (!announcer) return;
-    if (!announcerIsOnChannel(oldState.channel)) return;
 
-    // Connection Handling
-    {
-        const fetchedChannel = await oldState.channel.fetch();
-        const otherNonBotMembers = fetchedChannel.members.filter(
-            (m) => !m.user.bot && m.user.id != oldState.client.user?.id,
-        );
-        if (otherNonBotMembers.size == 0) {
-            destroyTTSPlayer(oldState.guild);
-        }
+    if (!announcer) {
+        return;
     }
 
-    // Announcement Handling
-    if (announcer) {
-        // Announcement Handling
-        await announcer?.play(translate(getGuildTextLanguage(oldState.guild.id), "leave", getMemberNickname(oldState.member!)));
+    if (!announcerIsOnChannel(oldState.channel)) {
+        return;
+    }
+
+    /*
+     * Play the leave announcement before potentially destroying
+     * the player. This keeps the existing provider and configured
+     * ElevenLabs voice alive while the audio is generated.
+     */
+    await announcer.play(
+        translate(
+            getGuildTextLanguage(oldState.guild.id),
+            "leave",
+            getMemberNickname(oldState.member!),
+        ),
+    );
+
+    /*
+     * Only destroy the player after the announcement has been
+     * submitted for playback and nobody else is left in the channel.
+     */
+    const fetchedChannel = await oldState.channel.fetch();
+
+    const otherNonBotMembers = fetchedChannel.members.filter(
+        (member) =>
+            !member.user.bot &&
+            member.user.id !== oldState.client.user?.id,
+    );
+
+    if (otherNonBotMembers.size === 0) {
+        destroyTTSPlayer(oldState.guild);
     }
 }
 
-async function onMemberConnect(newState: VoiceStateWithChannel) {
+async function onMemberConnect(
+    newState: VoiceStateWithChannel,
+) {
     let announcer = getAnnouncer(newState.guild.id);
 
     console.log(
-        `${newState.member?.user.displayName} left channel${newState.channel.name}`,
+        `${newState.member?.user.displayName} joined channel ${newState.channel.name}`,
     );
 
-    // Connection Handling
     if (!announcer) {
-        if (!newState.member?.user.bot) {
-            announcer = await createTTSPlayer(newState.guild, newState.channel);
-        }
-        // Ignore bots
-    } else {
-        // Already connected
+        announcer = await createTTSPlayer(
+            newState.guild,
+            newState.channel,
+        );
     }
 
-    if (announcer && announcerIsOnChannel(newState.channel)) {
-        // Announcement Handling
-        await announcer?.play(translate(getGuildTextLanguage(newState.guild.id), "join", getMemberNickname(newState.member!))
+    if (
+        announcer &&
+        announcerIsOnChannel(newState.channel)
+    ) {
+        await announcer.play(
+            translate(
+                getGuildTextLanguage(newState.guild.id),
+                "join",
+                getMemberNickname(newState.member!),
+            ),
         );
     }
 }
@@ -124,123 +189,260 @@ async function onMemberChangedChannel(
     oldState: VoiceStateWithChannel,
     newState: VoiceStateWithChannel,
 ) {
-    if (oldState.channelId == newState.channelId) return; // Ignore events like deafen and mute
+    // Ignore events such as mute, unmute, deafen and undeafen.
+    if (oldState.channelId === newState.channelId) {
+        return;
+    }
 
     console.log(
-        `${oldState.member?.user.displayName} changed channel ${oldState.channel.name} -> ${newState.channel.name}`,
+        `${oldState.member?.user.displayName} changed channel `
+        + `${oldState.channel.name} -> ${newState.channel.name}`,
     );
 
-    // follow if left alone
     await onMemberDisconnect(oldState);
     await onMemberConnect(newState);
 }
 
-function createTTSProvider(config: GuildAnnouncerConfig) {
-    console.log("Creating TTS provider with config", config);
-    if (config.elevenLabsVoiceId) {
-        const voice = voiceById(config.elevenLabsVoiceId);
-        const language = langByKey(config.voiceLanguage);
+function createTTSProvider(
+    config: GuildAnnouncerConfig,
+) {
+    console.log(
+        "Creating TTS provider with config",
+        config,
+    );
 
-        const compatibleLanguages = voice.compatibleLanguages ?? [];
-        const isLangValid = compatibleLanguages.includes(language.subtag);
-        // fallback to first compatible language if configured language is not compatible with the voice
-        const langCode = isLangValid ? language.subtag : voice.compatibleLanguages[0]!;
+    if (config.elevenLabsVoiceId) {
+        const voice = voiceById(
+            config.elevenLabsVoiceId,
+        );
+
+        const language = langByKey(
+            config.voiceLanguage,
+        );
+
+        const compatibleLanguages =
+            voice.compatibleLanguages ?? [];
+
+        const isLanguageValid =
+            compatibleLanguages.includes(language.subtag);
+
+        /*
+         * Use the configured language when it is supported by the
+         * selected voice. Otherwise use the first language supported
+         * by that voice.
+         */
+        const languageCode = isLanguageValid
+            ? language.subtag
+            : compatibleLanguages[0];
+
+        if (!languageCode) {
+            throw new Error(
+                `No compatible language found for ElevenLabs voice `
+                + `${config.elevenLabsVoiceId}`,
+            );
+        }
 
         return new ElevenLabsProvider({
             voiceId: config.elevenLabsVoiceId,
-            language_code: langCode,
-        })
-    } else {
-        return new GoogleTranslateTTS({
-            language: config.voiceLanguage,
+            language_code: languageCode,
         });
     }
+
+    return new GoogleTranslateTTS({
+        language: config.voiceLanguage,
+    });
 }
 
 export async function createTTSPlayer(
     guild: Guild,
     channel: VoiceBasedChannel,
 ): Promise<TTSPlayer> {
-    const config = new GuildAnnouncerConfigRepository().getConfig(guild.id);
+    const config =
+        new GuildAnnouncerConfigRepository()
+            .getConfig(guild.id);
+
     const player = new TTSPlayerImpl({
         tts: createTTSProvider(config),
     });
 
-    console.log(`Connecting... (${guild.name}, ${channel.name})`);
-    await player.connect({guild, channel});
-    guildAnnouncerCache.set(guild.id, player);
-    console.log(`Create TTS Player in ${guild?.name}:${channel?.name}`);
+    console.log(
+        `Connecting... (${guild.name}, ${channel.name})`,
+    );
 
-    player.connection?.on(VoiceConnectionStatus.Disconnected, () => {
-        console.log("Disconnected.");
-        player?.destroy();
-        guildAnnouncerCache.set(guild.id, null);
+    await player.connect({
+        guild,
+        channel,
     });
+
+    guildAnnouncerCache.set(
+        guild.id,
+        player,
+    );
+
+    console.log(
+        `Create TTS Player in ${guild.name}:${channel.name}`,
+    );
+
+    player.connection?.on(
+        VoiceConnectionStatus.Disconnected,
+        () => {
+            console.log("Disconnected.");
+
+            player.destroy();
+            guildAnnouncerCache.set(guild.id, null);
+        },
+    );
+
     console.log("...Connected");
+
     return player;
 }
 
-export function destroyTTSPlayer(guild: Guild): void {
+export function destroyTTSPlayer(
+    guild: Guild,
+): void {
     const player = getAnnouncer(guild.id);
 
     if (player) {
-        const guild = player?.guild;
-        const channel = player?.guild;
-        player?.destroy();
-        console.log(`Removed TTS Player from ${guild?.name}:${channel?.name}`);
+        const playerGuild = player.guild;
+        const playerChannel = player.channel;
+
+        player.destroy();
+
+        console.log(
+            `Removed TTS Player from `
+            + `${playerGuild?.name ?? guild.name}:`
+            + `${playerChannel?.name ?? "unknown channel"}`,
+        );
     }
 
     guildAnnouncerCache.set(guild.id, null);
 }
 
-export async function updateTTSPlayer(guild: Guild) {
+export async function updateTTSPlayer(
+    guild: Guild,
+) {
     const player = getAnnouncer(guild.id);
-    if (!player) return;
+
+    if (!player) {
+        return;
+    }
 
     const channel = player.channel;
-    if (!channel) return;
+
+    if (!channel) {
+        return;
+    }
 
     destroyTTSPlayer(guild);
-    await createTTSPlayer(guild, channel);
+
+    await createTTSPlayer(
+        guild,
+        channel,
+    );
 }
 
-function announcerIsOnChannel(channel: VoiceBasedChannel) {
-    const announcer = getAnnouncer(channel.guildId);
-    if (!announcer) return false;
-    return announcer.channel?.id == channel.id;
+function announcerIsOnChannel(
+    channel: VoiceBasedChannel,
+) {
+    const announcer = getAnnouncer(
+        channel.guildId,
+    );
+
+    if (!announcer) {
+        return false;
+    }
+
+    return announcer.channel?.id === channel.id;
 }
 
-export function setGuildVoiceLanguage(guildId: Guild["id"], l: LanguageKey,): void {
-    const rep = new GuildAnnouncerConfigRepository();
-    rep.updateConfig({guildId, voiceLanguage: l, elevenLabsVoiceId: null});
+export function setGuildVoiceLanguage(
+    guildId: Guild["id"],
+    language: LanguageKey,
+): void {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    repository.updateConfig({
+        guildId,
+        voiceLanguage: language,
+        elevenLabsVoiceId: null,
+    });
 }
 
-export function getGuildVoiceLanguage(guildId: Guild["id"]): LanguageKey {
-    const rep = new GuildAnnouncerConfigRepository();
-    return rep.getConfig(guildId).voiceLanguage;
+export function getGuildVoiceLanguage(
+    guildId: Guild["id"],
+): LanguageKey {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    return repository
+        .getConfig(guildId)
+        .voiceLanguage;
 }
 
-export function setGuildTextLanguage(guildId: Guild["id"], l: SupportedLanguageKey,): void {
-    const rep = new GuildAnnouncerConfigRepository();
-    rep.updateConfig({guildId, textLanguage: l,});
+export function setGuildTextLanguage(
+    guildId: Guild["id"],
+    language: SupportedLanguageKey,
+): void {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    repository.updateConfig({
+        guildId,
+        textLanguage: language,
+    });
 }
 
-export function getGuildTextLanguage(guildId: Guild["id"]): SupportedLanguageKey {
-    const rep = new GuildAnnouncerConfigRepository();
-    return rep.getConfig(guildId).textLanguage;
+export function getGuildTextLanguage(
+    guildId: Guild["id"],
+): SupportedLanguageKey {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    return repository
+        .getConfig(guildId)
+        .textLanguage;
 }
 
-export function setGuildVoiceModel(guildId: Guild["id"], voiceId: VoiceId | null): void {
-    const rep = new GuildAnnouncerConfigRepository();
-    rep.updateConfig({guildId, elevenLabsVoiceId: voiceId,});
+export function setGuildVoiceModel(
+    guildId: Guild["id"],
+    voiceId: VoiceId | null,
+): void {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    repository.updateConfig({
+        guildId,
+        elevenLabsVoiceId: voiceId,
+    });
 }
 
-export function getGuildVoiceModel(guildId: Guild["id"]): VoiceId | null {
-    const rep = new GuildAnnouncerConfigRepository();
-    return rep.getConfig(guildId).elevenLabsVoiceId;
+export function getGuildVoiceModel(
+    guildId: Guild["id"],
+): VoiceId | null {
+    const repository =
+        new GuildAnnouncerConfigRepository();
+
+    return repository
+        .getConfig(guildId)
+        .elevenLabsVoiceId;
 }
 
-function getMemberNickname(member: GuildMember): string {
-    const alias = new GuildAnnouncerConfigRepository().getConfig(member.guild.id).aliases[member.user.id];
-    return alias ?? member.nickname ?? member.user.displayName ?? "User";
+function getMemberNickname(
+    member: GuildMember,
+): string {
+    const config =
+        new GuildAnnouncerConfigRepository()
+            .getConfig(member.guild.id);
+
+    const alias =
+        config.aliases[member.user.id];
+
+    return (
+        alias ??
+        member.nickname ??
+        member.user.displayName ??
+        "User"
+    );
 }
