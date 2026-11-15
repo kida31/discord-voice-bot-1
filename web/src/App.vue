@@ -71,6 +71,11 @@ type DiscordGuild = {
   isAdmin: boolean
 }
 
+type PublicBranding = {
+  guildName: string | null
+  iconUrl: string | null
+}
+
 type MeResponse =
   | {
       authenticated: true
@@ -188,6 +193,7 @@ const recentAuditEvents = ref<AuditEvent[]>([])
 const currentUser = ref<DiscordUser | null>(null)
 const currentGuild = ref<DiscordGuild | null>(null)
 const authLoading = ref(true)
+const publicBranding = ref<PublicBranding | null>(null)
 
 const alias = ref("")
 const aliasMaxLength = ref(64)
@@ -964,6 +970,16 @@ async function loadAlias() {
   }
 }
 
+async function loadPublicBranding() {
+  try {
+    const response = await fetch(`${API_URL}/api/public/branding`)
+    if (!response.ok) return
+    publicBranding.value = await response.json() as PublicBranding
+  } catch (error) {
+    console.error("Could not load public branding:", error)
+  }
+}
+
 async function loadCurrentUser() {
   authLoading.value = true
 
@@ -1725,12 +1741,120 @@ async function logout() {
 
 onMounted(() => {
   void checkBackendHealth()
+  void loadPublicBranding()
   void loadCurrentUser()
 })
 </script>
 
 <template>
-  <div class="dashboard">
+  <div v-if="authLoading" class="auth-screen">
+    <div class="auth-orb auth-orb-one"></div>
+    <div class="auth-orb auth-orb-two"></div>
+    <div class="auth-grid-pattern"></div>
+
+    <div class="auth-card auth-loading-card">
+      <div class="auth-logo-wrap">
+        <div class="auth-brand-icon" :class="{ 'has-server-icon': publicBranding?.iconUrl }">
+          <img v-if="publicBranding?.iconUrl" :src="publicBranding.iconUrl" alt="L-F-Ants Servericon" />
+          <span v-else>L</span>
+        </div>
+        <span class="auth-logo-glow"></span>
+      </div>
+      <p class="auth-kicker">L-F-Ants</p>
+      <h1>Dashboard</h1>
+      <p class="auth-description">Deine Session wird sicher geprüft.</p>
+      <div class="auth-loader" aria-label="Anmeldung wird geprüft"></div>
+    </div>
+  </div>
+
+  <div v-else-if="!currentUser" class="auth-screen">
+    <div class="auth-orb auth-orb-one"></div>
+    <div class="auth-orb auth-orb-two"></div>
+    <div class="auth-grid-pattern"></div>
+
+    <div class="auth-shell">
+      <section class="auth-hero">
+        <div class="auth-logo-wrap">
+          <div class="auth-brand-icon" :class="{ 'has-server-icon': publicBranding?.iconUrl }">
+          <img v-if="publicBranding?.iconUrl" :src="publicBranding.iconUrl" alt="L-F-Ants Servericon" />
+          <span v-else>L</span>
+        </div>
+          <span class="auth-logo-glow"></span>
+        </div>
+
+        <div>
+          <p class="auth-kicker">L-F-Ants</p>
+          <h1>Alles an einem Ort.</h1>
+          <p class="auth-hero-copy">
+            Verwalte deinen Bot, persönliche Einstellungen und Serverfunktionen über ein zentrales Dashboard.
+          </p>
+        </div>
+
+        <div class="auth-feature-list">
+          <div class="auth-feature">
+            <span class="auth-feature-dot"></span>
+            <div><strong>Persönlich</strong><span>Deine eigenen Einstellungen und dein TTS-Alias.</span></div>
+          </div>
+          <div class="auth-feature">
+            <span class="auth-feature-dot"></span>
+            <div><strong>Live</strong><span>Serverstatus, Stimmen, Cache und weitere Bot-Dienste.</span></div>
+          </div>
+          <div class="auth-feature">
+            <span class="auth-feature-dot"></span>
+            <div><strong>Sicher</strong><span>Zugriff und Rollen werden direkt über Discord geprüft.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="auth-card auth-login-card">
+        <div class="auth-login-badge">Discord Authentication</div>
+        <p class="auth-kicker">Willkommen zurück</p>
+        <h2>Mit Discord anmelden</h2>
+        <p class="auth-description">
+          Authentifiziere deinen Discord-Account. Danach siehst du nur die Bereiche, für die dein Account berechtigt ist.
+        </p>
+
+        <button type="button" class="discord-button auth-login-button" @click="loginWithDiscord">
+          <span class="auth-discord-mark">◈</span>
+          Weiter mit Discord
+        </button>
+
+        <div class="auth-security-note">
+          <span class="auth-lock">●</span>
+          <span>Zugriff nur für Mitglieder des L-F-Ants Discord-Servers.</span>
+        </div>
+      </section>
+    </div>
+
+    <footer class="auth-footer">
+      <span>© 2026 Matthias Nguyen Services · Betreiber</span>
+      <span class="auth-footer-separator">·</span>
+      <a href="https://www.service-nguyen.de/imprint/" target="_blank" rel="noopener noreferrer">Impressum</a>
+      <span class="auth-footer-separator">·</span>
+      <span>Secure Discord Access</span>
+    </footer>
+  </div>
+
+  <div v-else-if="currentGuild?.isMember !== true" class="auth-screen">
+    <div class="auth-orb auth-orb-one"></div>
+    <div class="auth-orb auth-orb-two"></div>
+    <div class="auth-grid-pattern"></div>
+    <div class="auth-card auth-denied-card">
+      <div class="auth-logo-wrap"><div class="auth-brand-icon" :class="{ 'has-server-icon': publicBranding?.iconUrl }">
+          <img v-if="publicBranding?.iconUrl" :src="publicBranding.iconUrl" alt="L-F-Ants Servericon" />
+          <span v-else>L</span>
+        </div><span class="auth-logo-glow"></span></div>
+      <div class="auth-denied-icon">!</div>
+      <p class="auth-kicker">Zugriff verweigert</p>
+      <h1>Keine Servermitgliedschaft</h1>
+      <p class="auth-description">
+        Die Discord-Anmeldung war erfolgreich, aber dein Account ist kein Mitglied des konfigurierten L-F-Ants Discord-Servers.
+      </p>
+      <button type="button" class="logout-button auth-login-button" @click="logout">Abmelden</button>
+    </div>
+  </div>
+
+  <div v-else class="dashboard">
     <aside class="sidebar">
       <div class="brand">
         <div
@@ -1747,7 +1871,7 @@ onMounted(() => {
 
         <div>
           <strong>L-F-Ants</strong>
-          <span>TTS Dashboard</span>
+          <span>L-F-Ants Dashboard</span>
         </div>
       </div>
 

@@ -738,6 +738,45 @@ await app.register(cors, {
 await app.register(cookie);
 
 /* ==============================================================
+ * Public dashboard branding
+ * ==============================================================
+ */
+
+app.get(
+    "/api/public/branding",
+    async (request) => {
+        try {
+            const response = await fetch(
+                `${DISCORD_API_URL}/guilds/${guildId}`,
+                {
+                    headers: {
+                        Authorization: `Bot ${botToken}`,
+                    },
+                },
+            );
+
+            if (!response.ok) {
+                return {guildName: "L-F-Ants", iconUrl: null};
+            }
+
+            const guild = await response.json() as {
+                id: string;
+                name: string;
+                icon: string | null;
+            };
+
+            return {
+                guildName: guild.name,
+                iconUrl: getDiscordGuildIconUrl(guild.id, guild.icon),
+            };
+        } catch (error) {
+            request.log.warn({error}, "Could not load public guild branding");
+            return {guildName: "L-F-Ants", iconUrl: null};
+        }
+    },
+);
+
+/* ==============================================================
  * Health
  * ==============================================================
  */
