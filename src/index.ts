@@ -29,9 +29,10 @@ function main() {
         // Read messages in channels
         .on(Events.MessageCreate, messageCreateListener);
 
-    client
-        .login(token) // Login to Discord with your client's token
-        .then(s => console.log("[login] " + s));
+    client.login(token).catch((error) => {
+        console.error("Discord login failed:", error);
+    });
+
 }
 
 main();
